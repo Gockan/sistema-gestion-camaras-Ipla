@@ -15,17 +15,21 @@
 
     <p id="usuarioActivo"></p>
 
-    <input 
-        type="text" 
-        id="sede" 
-        placeholder="Establecimiento / Sede"
-    >
+    <select id="establecimiento">
+        <option value="">Seleccione establecimiento</option>
+    </select>
 
-    <input 
-        type="text" 
-        id="ubicacion" 
-        placeholder="Cámara / ubicación"
-    >
+    <select id="camara">
+        <option value="">Seleccione cámara</option>
+    </select>
+
+    <select id="estado_camara">
+        <option value="">Seleccione estado detectado</option>
+        <option value="2">Con baja visibilidad</option>
+        <option value="3">Fuera de servicio</option>
+        <option value="4">Sucia</option>
+        <option value="5">Sin señal</option>
+    </select>
 
     <textarea
         id="descripcion"
@@ -33,20 +37,13 @@
         rows="5"
     ></textarea>
 
-    <br><br>
-
     <label>
-
         <input 
             type="checkbox"
             id="enviado_jefatura"
         >
-
         Generar reporte para jefatura
-
     </label>
-
-    <br><br>
 
     <button onclick="registrarIncidencia()">
         Guardar incidencia
@@ -59,36 +56,24 @@
 </div>
 
 <script>
+    const usuario = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('rol');
 
-const usuario=
-localStorage.getItem(
-'usuario'
-);
+    if (rol !== "Operador") {
+        alert('Acceso restringido');
+        window.location.href = 'dashboard.html';
+    }
 
-const rol=
-localStorage.getItem(
-'rol'
-);
-
-if(rol!=="Operador"){
-
-alert(
-'Acceso restringido'
-);
-
-window.location.href=
-'dashboard.html';
-
-}
-
-document.getElementById(
-'usuarioActivo'
-).innerText=
-'Usuario: '+usuario;
-
+    document.getElementById('usuarioActivo').innerText =
+        'Usuario: ' + usuario;
 </script>
 
 <script src="js/app.js"></script>
+
+<script>
+    cargarEstablecimientos();
+    cargarCamaras();
+</script>
 
 </body>
 </html>

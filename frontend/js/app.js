@@ -1,54 +1,166 @@
 const API_URL = 'https://sistema-gestion-camaras-ipla.onrender.com';
+async function cargarEstablecimientos(){
 
-async function registrarIncidencia() {
-    const sede = document.getElementById('sede').value;
-    const ubicacion = document.getElementById('ubicacion').value;
-    const descripcion = document.getElementById('descripcion').value;
-    const estado = 'Pendiente';
-    const enviado_jefatura = document.getElementById('enviado_jefatura').checked;
+try{
 
-    if (
-        sede.trim() === '' ||
-        ubicacion.trim() === '' ||
-        descripcion.trim() === ''
-    ) {
-        alert('Complete todos los campos');
-        return;
-    }
+const respuesta=
+await fetch(
+`${API_URL}/establecimientos`
+);
 
-    const datos = {
-        sede,
-        ubicacion,
-        descripcion,
-        estado,
-        enviado_jefatura
-    };
+const datos=
+await respuesta.json();
 
-    try {
-        const respuesta = await fetch(`${API_URL}/incidencias`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(datos)
-        });
+const select=
+document.getElementById(
+'establecimiento'
+);
 
-        if (respuesta.ok) {
-            if (enviado_jefatura) {
-                alert('Incidencia registrada y reporte enviado a jefatura');
-            } else {
-                alert('Incidencia registrada correctamente');
-            }
+if(!select)return;
 
-            window.location.href = 'historial.html';
-        } else {
-            alert('Error al registrar incidencia');
-        }
+datos.forEach(item=>{
 
-    } catch (error) {
-        console.error(error);
-        alert('Error al registrar incidencia');
-    }
+select.innerHTML+=`
+<option value="${item.nombre_establecimiento}">
+${item.nombre_establecimiento}
+</option>
+`;
+
+});
+
+}catch(error){
+
+console.error(error);
+
+}
+
+}
+
+async function cargarCamaras(){
+
+try{
+
+const respuesta=
+await fetch(
+`${API_URL}/camaras`
+);
+
+const datos=
+await respuesta.json();
+
+const select=
+document.getElementById(
+'camara'
+);
+
+if(!select)return;
+
+datos.forEach(item=>{
+
+select.innerHTML+=`
+<option value="${item.codigo_camara}">
+${item.codigo_camara}
+-
+${item.ubicacion}
+</option>
+`;
+
+});
+
+}catch(error){
+
+console.error(error);
+
+}
+
+}
+
+async function registrarIncidencia(){
+
+const sede=
+document.getElementById(
+'establecimiento'
+).value;
+
+const ubicacion=
+document.getElementById(
+'camara'
+).value;
+
+const descripcion=
+document.getElementById(
+'descripcion'
+).value;
+
+const estado='Pendiente';
+
+const enviado_jefatura=
+document.getElementById(
+'enviado_jefatura'
+).checked;
+
+
+if(
+
+sede==='' ||
+ubicacion==='' ||
+descripcion.trim()===''
+
+){
+
+alert(
+'Complete todos los campos'
+);
+
+return;
+
+}
+
+const datos={
+
+sede,
+ubicacion,
+descripcion,
+estado,
+enviado_jefatura
+
+};
+
+try{
+
+const respuesta=
+await fetch(
+`${API_URL}/incidencias`,
+{
+method:'POST',
+headers:{
+'Content-Type':'application/json'
+},
+body:JSON.stringify(datos)
+}
+);
+
+if(respuesta.ok){
+
+alert(
+'Incidencia registrada'
+);
+
+window.location.href=
+'historial.html';
+
+}
+
+}catch(error){
+
+console.error(error);
+
+alert(
+'Error al registrar'
+);
+
+}
+
 }
 
 async function cargarIncidencias() {

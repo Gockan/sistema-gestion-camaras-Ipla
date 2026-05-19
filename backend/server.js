@@ -170,7 +170,114 @@ app.delete('/incidencias/:id', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+/* OBTENER ESTABLECIMIENTOS */
 
+app.get('/establecimientos', async (req,res)=>{
+
+    try{
+
+        const resultado = await pool.query(
+            `SELECT * 
+             FROM establecimiento
+             ORDER BY nombre_establecimiento`
+        );
+
+        res.json(resultado.rows);
+
+    }catch(error){
+
+        console.error(error);
+
+        res.status(500).json({
+            mensaje:'Error establecimientos'
+        });
+
+    }
+
+});
+
+
+/* OBTENER CAMARAS */
+
+app.get('/camaras', async(req,res)=>{
+
+    try{
+
+        const resultado = await pool.query(
+            `SELECT
+                c.id_camara,
+                c.codigo_camara,
+                c.ubicacion,
+                c.estado,
+                e.nombre_establecimiento
+
+            FROM camara c
+
+            JOIN establecimiento e
+            ON c.id_establecimiento=
+            e.id_establecimiento
+
+            ORDER BY c.codigo_camara`
+        );
+
+        res.json(resultado.rows);
+
+    }catch(error){
+
+        console.error(error);
+
+        res.status(500).json({
+            mensaje:'Error cámaras'
+        });
+
+    }
+
+});
+
+
+/* CREAR REPORTE */
+
+app.post('/reportes', async(req,res)=>{
+
+try{
+
+const{
+id_incidencia,
+observacion
+}=req.body;
+
+const resultado=
+await pool.query(
+
+`INSERT INTO reporte
+(id_incidencia,observacion)
+
+VALUES($1,$2)
+
+RETURNING *`,
+
+[
+id_incidencia,
+observacion
+]
+
+);
+
+res.json(
+resultado.rows[0]
+);
+
+}catch(error){
+
+console.error(error);
+
+res.status(500).json({
+mensaje:'Error reporte'
+});
+
+}
+
+});
 app.listen(PORT, () => {
     console.log(`Servidor ejecutándose en puerto ${PORT}`);
 });
