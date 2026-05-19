@@ -38,7 +38,7 @@
             }
 
             try {
-                const respuesta = await fetch('https://sistema-gestion-camaras-ipla.onrender.com', {
+                const respuesta = await fetch('https://sistema-gestion-camaras-ipla.onrender.com/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -50,10 +50,9 @@
                 });
 
                 if (!respuesta.ok) {
-    const error = await respuesta.json();
-    alert(error.mensaje);
-    return;
-}
+                    alert('Credenciales incorrectas');
+                    return;
+                }
 
                 const datos = await respuesta.json();
 
