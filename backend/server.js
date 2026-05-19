@@ -1,9 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-
 const pool = require('./db');
-
+const bcrypt = require('bcrypt');
 const app = express();
 
 app.use(cors());
@@ -22,13 +21,13 @@ app.post('/login', async (req, res) => {
                 u.id_usuario,
                 u.nombre,
                 u.correo,
+                u.contrasena_hash,
                 p.nombre_perfil AS rol
             FROM usuario u
             JOIN perfil p ON u.id_perfil = p.id_perfil
             WHERE u.correo = $1
-            AND u.contrasena_hash = $2
             AND u.estado_usuario = true`,
-            [correo, password]
+            [correo]
         );
 
         if (resultado.rows.length === 0) {
@@ -37,7 +36,25 @@ app.post('/login', async (req, res) => {
             });
         }
 
-        res.json(resultado.rows[0]);
+        const usuario = resultado.rows[0];
+
+        const passwordCorrecta = await bcrypt.compare(
+            password,
+            usuario.contrasena_hash
+        );
+
+        if (!passwordCorrecta) {
+            return res.status(401).json({
+                mensaje: 'Credenciales incorrectas'
+            });
+        }
+
+        res.json({
+            id_usuario: usuario.id_usuario,
+            nombre: usuario.nombre,
+            correo: usuario.correo,
+            rol: usuario.rol
+        });
 
     } catch (error) {
         console.error('Error login:', error.message);
