@@ -50,9 +50,10 @@
                 });
 
                 if (!respuesta.ok) {
-                    alert('Credenciales incorrectas');
-                    return;
-                }
+    const error = await respuesta.json();
+    alert(error.mensaje);
+    return;
+}
 
                 const datos = await respuesta.json();
 
