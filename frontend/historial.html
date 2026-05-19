@@ -9,37 +9,53 @@
 </head>
 <body>
 
-    <div class="contenedor">
+<div class="contenedor">
 
-        <h1>Historial de Incidencias</h1>
+    <h1>Historial de Incidencias</h1>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Sede</th>
-                    <th>Ubicación</th>
-                    <th>Descripción</th>
-                    <th>Estado</th>
-                    <th>Fecha</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
+    <p id="usuarioActivo"></p>
 
-            <tbody id="tabla-incidencias">
-            </tbody>
-        </table>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Sede</th>
+                <th>Ubicación</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+                <th>Reporte</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
 
-        <button onclick="window.location.href='dashboard.html'">
-            Volver
-        </button>
+        <tbody id="tabla-incidencias">
+        </tbody>
+    </table>
 
-    </div>
+    <button onclick="window.location.href='dashboard.html'">
+        Volver
+    </button>
 
-    <script src="js/app.js"></script>
-    <script>
-        cargarIncidencias();
-    </script>
+</div>
+
+<script>
+    const usuario = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('rol');
+
+    if (!rol) {
+        window.location.href = 'login.html';
+    }
+
+    document.getElementById('usuarioActivo').innerText =
+        'Usuario: ' + usuario + ' | Perfil: ' + rol;
+</script>
+
+<script src="js/app.js"></script>
+
+<script>
+    cargarIncidencias();
+</script>
 
 </body>
 </html>

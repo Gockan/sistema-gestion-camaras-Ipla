@@ -9,47 +9,86 @@
 </head>
 <body>
 
-    <div class="dashboard">
+<div class="dashboard">
 
-        <h1>Registrar Incidencia</h1>
+    <h1>Registrar Incidencia</h1>
 
-        <input type="text" id="sede" placeholder="Sede">
+    <p id="usuarioActivo"></p>
 
-        <input type="text" id="ubicacion" placeholder="Ubicación">
+    <input 
+        type="text" 
+        id="sede" 
+        placeholder="Establecimiento / Sede"
+    >
 
-        <textarea
-            id="descripcion"
-            placeholder="Descripción de la incidencia"
-            rows="5"
-        ></textarea>
+    <input 
+        type="text" 
+        id="ubicacion" 
+        placeholder="Cámara / ubicación"
+    >
 
-        <select id="estado">
+    <textarea
+        id="descripcion"
+        placeholder="Detalle del problema detectado"
+        rows="5"
+    ></textarea>
 
-            <option value="Pendiente">
-                Pendiente
-            </option>
+    <br><br>
 
-            <option value="En revisión">
-                En revisión
-            </option>
+    <label>
 
-            <option value="Resuelto">
-                Resuelto
-            </option>
+        <input 
+            type="checkbox"
+            id="enviado_jefatura"
+        >
 
-        </select>
+        Generar reporte para jefatura
 
-        <button onclick="registrarIncidencia()">
-            Guardar Incidencia
-        </button>
+    </label>
 
-        <button onclick="window.location.href='dashboard.html'">
-            Volver
-        </button>
+    <br><br>
 
-    </div>
+    <button onclick="registrarIncidencia()">
+        Guardar incidencia
+    </button>
 
-    <script src="js/app.js"></script>
+    <button onclick="window.location.href='dashboard.html'">
+        Volver
+    </button>
+
+</div>
+
+<script>
+
+const usuario=
+localStorage.getItem(
+'usuario'
+);
+
+const rol=
+localStorage.getItem(
+'rol'
+);
+
+if(rol!=="Operador"){
+
+alert(
+'Acceso restringido'
+);
+
+window.location.href=
+'dashboard.html';
+
+}
+
+document.getElementById(
+'usuarioActivo'
+).innerText=
+'Usuario: '+usuario;
+
+</script>
+
+<script src="js/app.js"></script>
 
 </body>
 </html>

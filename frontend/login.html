@@ -2,26 +2,72 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-
+    <title>Login - Sistema Gestión Cámaras</title>
     <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
 
     <div class="login-container">
+        <h1>Sistema Gestión Cámaras</h1>
 
-        <h1>Sistema de Gestión de Cámaras</h1>
+        <input 
+            type="email" 
+            id="correo" 
+            placeholder="Correo"
+        >
 
-        <input type="text" placeholder="Usuario">
+        <input 
+            type="password" 
+            id="password" 
+            placeholder="Contraseña"
+        >
 
-        <input type="password" placeholder="Contraseña">
-
-        <button onclick="window.location.href='dashboard.html'">
-            Iniciar Sesión
+        <button onclick="login()">
+            Iniciar sesión
         </button>
-
     </div>
+
+    <script>
+        async function login() {
+            const correo = document.getElementById('correo').value;
+            const password = document.getElementById('password').value;
+
+            if (correo === '' || password === '') {
+                alert('Debe ingresar correo y contraseña');
+                return;
+            }
+
+            try {
+                const respuesta = await fetch('http://localhost:3000/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        correo: correo,
+                        password: password
+                    })
+                });
+
+                if (!respuesta.ok) {
+                    alert('Credenciales incorrectas');
+                    return;
+                }
+
+                const datos = await respuesta.json();
+
+                localStorage.setItem('usuario', datos.nombre);
+                localStorage.setItem('correo', datos.correo);
+                localStorage.setItem('rol', datos.rol);
+
+                window.location.href = 'dashboard.html';
+
+            } catch (error) {
+                console.error(error);
+                alert('No se pudo conectar con el servidor');
+            }
+        }
+    </script>
 
 </body>
 </html>

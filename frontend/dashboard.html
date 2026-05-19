@@ -9,31 +9,75 @@
 </head>
 <body>
 
-    <div class="dashboard">
+<div class="dashboard">
 
-        <h1>Bienvenido</h1>
+    <h1>Sistema Gestión Cámaras</h1>
 
-        <div class="menu">
+    <h2 id="bienvenida"></h2>
 
-            <button onclick="window.location.href='registrar.html'">
-                Registrar Incidencia
-            </button>
+    <div id="operadorPanel">
 
-            <button onclick="window.location.href='historial.html'">
-                Ver Historial
-            </button>
+        <h3>Panel Operador</h3>
 
-            <button>
-                Reportes
-            </button>
+        <p>
+            Desde este módulo se registran incidencias detectadas en las cámaras y se generan reportes para jefatura.
+        </p>
 
-            <button onclick="window.location.href='login.html'">
-                Cerrar Sesión
-            </button>
+        <a href="registrar.html">
+            Registrar incidencia
+        </a>
 
-        </div>
+        <a href="historial.html">
+            Ver historial y reportes
+        </a>
 
     </div>
+
+    <div id="tecnicoPanel">
+
+        <h3>Panel Técnico</h3>
+
+        <p>
+            Desde este módulo el técnico revisa incidencias reportadas, consulta el historial y actualiza el estado de atención.
+        </p>
+
+        <a href="historial.html">
+            Revisar incidencias
+        </a>
+
+    </div>
+
+    <button onclick="cerrarSesion()">
+        Cerrar sesión
+    </button>
+
+</div>
+
+<script>
+    const usuario = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('rol');
+
+    if (!usuario || !rol) {
+        window.location.href = 'login.html';
+    }
+
+    document.getElementById('bienvenida').innerText =
+        usuario + ' - ' + rol;
+
+    if (rol === 'Operador') {
+        document.getElementById('tecnicoPanel').style.display = 'none';
+    } else if (rol === 'Tecnico') {
+        document.getElementById('operadorPanel').style.display = 'none';
+    } else {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+
+    function cerrarSesion() {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+</script>
 
 </body>
 </html>

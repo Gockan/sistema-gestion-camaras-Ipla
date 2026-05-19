@@ -69,3 +69,72 @@ th{
     background-color: #1e3a5f;
     color: white;
 }
+p{
+    color:#555;
+}
+
+label{
+    display:block;
+    margin-top:15px;
+    font-size:14px;
+}
+
+input[type="checkbox"]{
+    width:auto;
+    margin-right:8px;
+}
+
+#usuarioActivo{
+    text-align:center;
+    margin-bottom:20px;
+    font-weight:bold;
+    color:#1e3a5f;
+}
+
+#operadorPanel,
+#tecnicoPanel{
+    margin-top:20px;
+}
+
+a{
+    display:block;
+    width:100%;
+    padding:12px;
+    margin-top:15px;
+    background-color:#1e3a5f;
+    color:white;
+    text-decoration:none;
+    text-align:center;
+    box-sizing:border-box;
+    border-radius:4px;
+}
+
+a:hover{
+    background-color:#2a4f80;
+}
+
+table button{
+    margin-top:5px;
+}
+
+td{
+    vertical-align:middle;
+}
+
+@media(max-width:768px){
+
+.contenedor,
+.dashboard,
+.login-container{
+
+width:95%;
+
+}
+
+table{
+
+font-size:12px;
+
+}
+
+}
