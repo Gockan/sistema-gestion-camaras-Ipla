@@ -99,30 +99,67 @@ app.post('/incidencias', async (req, res) => {
         });
     }
 });
-
 app.put('/incidencias/:id/reporte', async (req, res) => {
     try {
+
         const { id } = req.params;
 
-        const resultado = await pool.query(
+        // marcar incidencia enviada
+        await pool.query(
             `UPDATE incidencias
-            SET enviado_jefatura = true
-            WHERE id = $1
-            RETURNING *`,
+            SET enviado_jefatura=true
+            WHERE id=$1`,
             [id]
         );
 
-        res.json(resultado.rows[0]);
+        // obtener datos
+        const incidencia = await pool.query(
+            `SELECT *
+            FROM incidencias
+            WHERE id=$1`,
+            [id]
+        );
 
-    } catch (error) {
-        console.error('Error al generar reporte:', error.message);
+        // crear reporte usando estructura real
+        await pool.query(
+            `INSERT INTO reporte
+            (
+                id_incidencia,
+                fecha_reporte,
+                destinatario,
+                observacion
+            )
+            VALUES
+            (
+                $1,
+                NOW(),
+                $2,
+                $3
+            )`,
+            [
+                id,
+                'jefatura@empresa.cl',
+                `Sede: ${incidencia.rows[0].sede}
+                Ubicación: ${incidencia.rows[0].ubicacion}
+                Problema: ${incidencia.rows[0].descripcion}
+                Estado: ${incidencia.rows[0].estado}`
+            ]
+        );
+
+        res.json({
+            mensaje:'Reporte generado'
+        });
+
+    } catch(error){
+
+        console.log(error);
 
         res.status(500).json({
-            mensaje: 'Error al generar reporte'
+            mensaje:'Error al generar'
         });
+
     }
 });
-
 app.put('/incidencias/:id/estado', async (req, res) => {
     try {
         const { id } = req.params;
