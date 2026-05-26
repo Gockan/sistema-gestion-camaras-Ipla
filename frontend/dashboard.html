@@ -20,7 +20,7 @@
         <h3>Panel Operador</h3>
 
         <p>
-            Desde este módulo se registran incidencias detectadas en las cámaras y se generan reportes para jefatura.
+            Desde este módulo se registran incidencias detectadas en las cámaras, se generan reportes para jefatura y se administran establecimientos y cámaras.
         </p>
 
         <a href="registrar.html">
@@ -29,6 +29,14 @@
 
         <a href="historial.html">
             Ver historial y reportes
+        </a>
+
+        <a href="establecimientos.html">
+            Gestionar establecimientos
+        </a>
+
+        <a href="camaras.html">
+            Gestionar cámaras
         </a>
 
     </div>
@@ -68,6 +76,9 @@
         document.getElementById('tecnicoPanel').style.display = 'none';
     } else if (rol === 'Tecnico') {
         document.getElementById('operadorPanel').style.display = 'none';
+    } else if (rol === 'Administrador') {
+        document.getElementById('operadorPanel').style.display = 'block';
+        document.getElementById('tecnicoPanel').style.display = 'block';
     } else {
         localStorage.clear();
         window.location.href = 'login.html';

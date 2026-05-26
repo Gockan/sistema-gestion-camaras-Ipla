@@ -1,9 +1,17 @@
 const API_URL = 'https://sistema-gestion-camaras-ipla.onrender.com';
 
+/* ============================================================
+   UTILIDADES
+============================================================ */
+
 function obtenerIdIncidenciaDesdeURL() {
     const parametros = new URLSearchParams(window.location.search);
     return parametros.get('id');
 }
+
+/* ============================================================
+   FORMULARIO INCIDENCIAS
+============================================================ */
 
 async function cargarEstablecimientos(valorSeleccionado = '') {
     try {
@@ -401,5 +409,357 @@ async function eliminarIncidencia(id) {
     } catch (error) {
         console.error(error);
         alert('Error al eliminar incidencia');
+    }
+}
+
+/* ============================================================
+   CRUD ESTABLECIMIENTOS
+============================================================ */
+
+async function iniciarFormularioEstablecimiento() {
+    await cargarEstablecimientosGestion();
+}
+
+function limpiarFormularioEstablecimiento() {
+    document.getElementById('id_establecimiento').value = '';
+    document.getElementById('nombre_establecimiento').value = '';
+    document.getElementById('direccion').value = '';
+    document.getElementById('tituloFormularioEstablecimiento').innerText = 'Registrar Establecimiento';
+}
+
+async function guardarEstablecimiento() {
+    const id = document.getElementById('id_establecimiento').value;
+    const nombre_establecimiento = document.getElementById('nombre_establecimiento').value;
+    const direccion = document.getElementById('direccion').value;
+
+    if (
+        nombre_establecimiento.trim() === '' ||
+        direccion.trim() === ''
+    ) {
+        alert('Complete todos los campos');
+        return;
+    }
+
+    const datos = {
+        nombre_establecimiento: nombre_establecimiento.trim(),
+        direccion: direccion.trim()
+    };
+
+    try {
+        let url = `${API_URL}/establecimientos`;
+        let metodo = 'POST';
+
+        if (id !== '') {
+            url = `${API_URL}/establecimientos/${id}`;
+            metodo = 'PUT';
+        }
+
+        const respuesta = await fetch(url, {
+            method: metodo,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datos)
+        });
+
+        if (respuesta.ok) {
+            alert(id === '' ? 'Establecimiento registrado' : 'Establecimiento actualizado');
+            limpiarFormularioEstablecimiento();
+            cargarEstablecimientosGestion();
+        } else {
+            alert('Error al guardar establecimiento');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al guardar establecimiento');
+    }
+}
+
+async function cargarEstablecimientosGestion() {
+    const tabla = document.getElementById('tabla-establecimientos');
+
+    if (!tabla) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/establecimientos`);
+        const establecimientos = await respuesta.json();
+
+        tabla.innerHTML = '';
+
+        establecimientos.forEach(item => {
+            const fila = document.createElement('tr');
+
+            fila.innerHTML = `
+                <td>${item.id_establecimiento}</td>
+                <td>${item.nombre_establecimiento}</td>
+                <td>${item.direccion}</td>
+                <td>
+                    <button onclick="editarEstablecimiento(${item.id_establecimiento})">
+                        Editar
+                    </button>
+
+                    <button onclick="eliminarEstablecimiento(${item.id_establecimiento})">
+                        Eliminar
+                    </button>
+                </td>
+            `;
+
+            tabla.appendChild(fila);
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar establecimientos');
+    }
+}
+
+async function editarEstablecimiento(id) {
+    try {
+        const respuesta = await fetch(`${API_URL}/establecimientos/${id}`);
+
+        if (!respuesta.ok) {
+            alert('No se pudo obtener el establecimiento');
+            return;
+        }
+
+        const establecimiento = await respuesta.json();
+
+        document.getElementById('tituloFormularioEstablecimiento').innerText = 'Editar Establecimiento';
+        document.getElementById('id_establecimiento').value = establecimiento.id_establecimiento;
+        document.getElementById('nombre_establecimiento').value = establecimiento.nombre_establecimiento;
+        document.getElementById('direccion').value = establecimiento.direccion;
+
+        window.scrollTo(0, 0);
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al editar establecimiento');
+    }
+}
+
+async function eliminarEstablecimiento(id) {
+    const confirmar = confirm('¿Desea eliminar este establecimiento? También se ocultarán sus cámaras asociadas. La eliminación será lógica.');
+
+    if (!confirmar) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/establecimientos/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (respuesta.ok) {
+            alert('Establecimiento eliminado lógicamente');
+            cargarEstablecimientosGestion();
+        } else {
+            alert('Error al eliminar establecimiento');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al eliminar establecimiento');
+    }
+}
+
+/* ============================================================
+   CRUD CÁMARAS
+============================================================ */
+
+async function iniciarFormularioCamara() {
+    await cargarEstablecimientosParaCamara();
+    await cargarCamarasGestion();
+}
+
+function limpiarFormularioCamara() {
+    document.getElementById('id_camara').value = '';
+    document.getElementById('id_establecimiento_camara').value = '';
+    document.getElementById('codigo_camara').value = '';
+    document.getElementById('ubicacion_camara').value = '';
+    document.getElementById('estado_camara_gestion').value = '';
+    document.getElementById('tituloFormularioCamara').innerText = 'Registrar Cámara';
+}
+
+async function cargarEstablecimientosParaCamara(valorSeleccionado = '') {
+    try {
+        const respuesta = await fetch(`${API_URL}/establecimientos`);
+        const establecimientos = await respuesta.json();
+
+        const select = document.getElementById('id_establecimiento_camara');
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = '<option value="">Seleccione establecimiento</option>';
+
+        establecimientos.forEach(item => {
+            const selected = String(item.id_establecimiento) === String(valorSeleccionado)
+                ? 'selected'
+                : '';
+
+            select.innerHTML += `
+                <option value="${item.id_establecimiento}" ${selected}>
+                    ${item.nombre_establecimiento}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar establecimientos');
+    }
+}
+
+async function guardarCamara() {
+    const id = document.getElementById('id_camara').value;
+    const id_establecimiento = document.getElementById('id_establecimiento_camara').value;
+    const codigo_camara = document.getElementById('codigo_camara').value;
+    const ubicacion = document.getElementById('ubicacion_camara').value;
+    const estado = document.getElementById('estado_camara_gestion').value;
+
+    if (
+        id_establecimiento === '' ||
+        codigo_camara.trim() === '' ||
+        ubicacion.trim() === '' ||
+        estado === ''
+    ) {
+        alert('Complete todos los campos');
+        return;
+    }
+
+    const datos = {
+        id_establecimiento,
+        codigo_camara: codigo_camara.trim(),
+        ubicacion: ubicacion.trim(),
+        estado
+    };
+
+    try {
+        let url = `${API_URL}/camaras`;
+        let metodo = 'POST';
+
+        if (id !== '') {
+            url = `${API_URL}/camaras/${id}`;
+            metodo = 'PUT';
+        }
+
+        const respuesta = await fetch(url, {
+            method: metodo,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datos)
+        });
+
+        if (respuesta.ok) {
+            alert(id === '' ? 'Cámara registrada' : 'Cámara actualizada');
+            limpiarFormularioCamara();
+            await cargarEstablecimientosParaCamara();
+            await cargarCamarasGestion();
+        } else {
+            alert('Error al guardar cámara');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al guardar cámara');
+    }
+}
+
+async function cargarCamarasGestion() {
+    const tabla = document.getElementById('tabla-camaras');
+
+    if (!tabla) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/camaras`);
+        const camaras = await respuesta.json();
+
+        tabla.innerHTML = '';
+
+        camaras.forEach(item => {
+            const fila = document.createElement('tr');
+
+            fila.innerHTML = `
+                <td>${item.id_camara}</td>
+                <td>${item.nombre_establecimiento}</td>
+                <td>${item.codigo_camara}</td>
+                <td>${item.ubicacion}</td>
+                <td>${item.estado}</td>
+                <td>
+                    <button onclick="editarCamara(${item.id_camara})">
+                        Editar
+                    </button>
+
+                    <button onclick="eliminarCamara(${item.id_camara})">
+                        Eliminar
+                    </button>
+                </td>
+            `;
+
+            tabla.appendChild(fila);
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar cámaras');
+    }
+}
+
+async function editarCamara(id) {
+    try {
+        const respuesta = await fetch(`${API_URL}/camaras/${id}`);
+
+        if (!respuesta.ok) {
+            alert('No se pudo obtener la cámara');
+            return;
+        }
+
+        const camara = await respuesta.json();
+
+        document.getElementById('tituloFormularioCamara').innerText = 'Editar Cámara';
+        document.getElementById('id_camara').value = camara.id_camara;
+        document.getElementById('codigo_camara').value = camara.codigo_camara;
+        document.getElementById('ubicacion_camara').value = camara.ubicacion;
+        document.getElementById('estado_camara_gestion').value = camara.estado;
+
+        await cargarEstablecimientosParaCamara(camara.id_establecimiento);
+
+        window.scrollTo(0, 0);
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al editar cámara');
+    }
+}
+
+async function eliminarCamara(id) {
+    const confirmar = confirm('¿Desea eliminar esta cámara? La eliminación será lógica, no se borrará definitivamente.');
+
+    if (!confirmar) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/camaras/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (respuesta.ok) {
+            alert('Cámara eliminada lógicamente');
+            cargarCamarasGestion();
+        } else {
+            alert('Error al eliminar cámara');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al eliminar cámara');
     }
 }

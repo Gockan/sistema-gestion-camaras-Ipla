@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Establecimientos</title>
+
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<div class="contenedor">
+
+    <h1>Gestión de Establecimientos</h1>
+
+    <p id="usuarioActivo"></p>
+
+    <h2 id="tituloFormularioEstablecimiento">Registrar Establecimiento</h2>
+
+    <input type="hidden" id="id_establecimiento">
+
+    <input
+        type="text"
+        id="nombre_establecimiento"
+        placeholder="Nombre del establecimiento"
+    >
+
+    <input
+        type="text"
+        id="direccion"
+        placeholder="Dirección del establecimiento"
+    >
+
+    <button onclick="guardarEstablecimiento()">
+        Guardar establecimiento
+    </button>
+
+    <button onclick="limpiarFormularioEstablecimiento()">
+        Limpiar
+    </button>
+
+    <hr>
+
+    <h2>Listado de Establecimientos</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Dirección</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody id="tabla-establecimientos">
+        </tbody>
+    </table>
+
+    <button onclick="window.location.href='dashboard.html'">
+        Volver
+    </button>
+
+</div>
+
+<script>
+    const usuario = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('rol');
+
+    if (!usuario || !rol) {
+        window.location.href = 'login.html';
+    }
+
+    if (rol !== 'Operador' && rol !== 'Administrador') {
+        alert('Acceso restringido');
+        window.location.href = 'dashboard.html';
+    }
+
+    document.getElementById('usuarioActivo').innerText =
+        'Usuario: ' + usuario + ' | Perfil: ' + rol;
+</script>
+
+<script src="js/app.js"></script>
+
+<script>
+    iniciarFormularioEstablecimiento();
+</script>
+
+</body>
+</html>
