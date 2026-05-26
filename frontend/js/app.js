@@ -38,12 +38,17 @@ async function cargarEstablecimientos(valorSeleccionado = '') {
             `;
         });
 
+        select.onchange = async function () {
+            const establecimientoSeleccionado = select.value;
+            await cargarCamaras('', establecimientoSeleccionado);
+        };
+
     } catch (error) {
         console.error(error);
     }
 }
 
-async function cargarCamaras(valorSeleccionado = '') {
+async function cargarCamaras(valorSeleccionado = '', establecimientoSeleccionado = '') {
     try {
         const respuesta = await fetch(`${API_URL}/camaras`);
         const datos = await respuesta.json();
@@ -56,7 +61,21 @@ async function cargarCamaras(valorSeleccionado = '') {
 
         select.innerHTML = '<option value="">Seleccione cámara</option>';
 
-        datos.forEach(item => {
+        if (establecimientoSeleccionado === '') {
+            select.innerHTML = '<option value="">Primero seleccione establecimiento</option>';
+            return;
+        }
+
+        const camarasFiltradas = datos.filter(item =>
+            item.nombre_establecimiento === establecimientoSeleccionado
+        );
+
+        if (camarasFiltradas.length === 0) {
+            select.innerHTML = '<option value="">No hay cámaras para este establecimiento</option>';
+            return;
+        }
+
+        camarasFiltradas.forEach(item => {
             const selected = item.codigo_camara === valorSeleccionado
                 ? 'selected'
                 : '';
@@ -77,7 +96,12 @@ async function iniciarFormularioIncidencia() {
     const id = obtenerIdIncidenciaDesdeURL();
 
     await cargarEstablecimientos();
-    await cargarCamaras();
+
+    const selectEstablecimiento = document.getElementById('establecimiento');
+
+    if (selectEstablecimiento) {
+        await cargarCamaras('', selectEstablecimiento.value);
+    }
 
     if (id) {
         await cargarIncidenciaParaEditar(id);
@@ -99,7 +123,7 @@ async function cargarIncidenciaParaEditar(id) {
         document.getElementById('tituloFormulario').innerText = 'Editar Incidencia';
 
         await cargarEstablecimientos(incidencia.sede);
-        await cargarCamaras(incidencia.ubicacion);
+        await cargarCamaras(incidencia.ubicacion, incidencia.sede);
 
         document.getElementById('descripcion').value = incidencia.descripcion;
         document.getElementById('enviado_jefatura').checked = incidencia.enviado_jefatura;
