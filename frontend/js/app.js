@@ -1,166 +1,98 @@
 const API_URL = 'https://sistema-gestion-camaras-ipla.onrender.com';
-async function cargarEstablecimientos(){
 
-try{
+async function cargarEstablecimientos() {
+    try {
+        const respuesta = await fetch(`${API_URL}/establecimientos`);
+        const datos = await respuesta.json();
 
-const respuesta=
-await fetch(
-`${API_URL}/establecimientos`
-);
+        const select = document.getElementById('establecimiento');
 
-const datos=
-await respuesta.json();
+        if (!select) {
+            return;
+        }
 
-const select=
-document.getElementById(
-'establecimiento'
-);
+        datos.forEach(item => {
+            select.innerHTML += `
+                <option value="${item.nombre_establecimiento}">
+                    ${item.nombre_establecimiento}
+                </option>
+            `;
+        });
 
-if(!select)return;
-
-datos.forEach(item=>{
-
-select.innerHTML+=`
-<option value="${item.nombre_establecimiento}">
-${item.nombre_establecimiento}
-</option>
-`;
-
-});
-
-}catch(error){
-
-console.error(error);
-
+    } catch (error) {
+        console.error(error);
+    }
 }
 
+async function cargarCamaras() {
+    try {
+        const respuesta = await fetch(`${API_URL}/camaras`);
+        const datos = await respuesta.json();
+
+        const select = document.getElementById('camara');
+
+        if (!select) {
+            return;
+        }
+
+        datos.forEach(item => {
+            select.innerHTML += `
+                <option value="${item.codigo_camara}">
+                    ${item.codigo_camara} - ${item.ubicacion}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
+    }
 }
 
-async function cargarCamaras(){
+async function registrarIncidencia() {
+    const sede = document.getElementById('establecimiento').value;
+    const ubicacion = document.getElementById('camara').value;
+    const descripcion = document.getElementById('descripcion').value;
+    const estado = 'Pendiente';
 
-try{
+    const enviado_jefatura = document.getElementById('enviado_jefatura').checked;
 
-const respuesta=
-await fetch(
-`${API_URL}/camaras`
-);
+    if (
+        sede === '' ||
+        ubicacion === '' ||
+        descripcion.trim() === ''
+    ) {
+        alert('Complete todos los campos');
+        return;
+    }
 
-const datos=
-await respuesta.json();
+    const datos = {
+        sede,
+        ubicacion,
+        descripcion,
+        estado,
+        enviado_jefatura
+    };
 
-const select=
-document.getElementById(
-'camara'
-);
+    try {
+        const respuesta = await fetch(`${API_URL}/incidencias`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datos)
+        });
 
-if(!select)return;
+        if (respuesta.ok) {
+            alert('Incidencia registrada');
+            window.location.href = 'historial.html';
+        } else {
+            alert('Error al registrar incidencia');
+        }
 
-datos.forEach(item=>{
-
-select.innerHTML+=`
-<option value="${item.codigo_camara}">
-${item.codigo_camara}
--
-${item.ubicacion}
-</option>
-`;
-
-});
-
-}catch(error){
-
-console.error(error);
-
-}
-
-}
-
-async function registrarIncidencia(){
-
-const sede=
-document.getElementById(
-'establecimiento'
-).value;
-
-const ubicacion=
-document.getElementById(
-'camara'
-).value;
-
-const descripcion=
-document.getElementById(
-'descripcion'
-).value;
-
-const estado='Pendiente';
-
-const enviado_jefatura=
-document.getElementById(
-'enviado_jefatura'
-).checked;
-
-
-if(
-
-sede==='' ||
-ubicacion==='' ||
-descripcion.trim()===''
-
-){
-
-alert(
-'Complete todos los campos'
-);
-
-return;
-
-}
-
-const datos={
-
-sede,
-ubicacion,
-descripcion,
-estado,
-enviado_jefatura
-
-};
-
-try{
-
-const respuesta=
-await fetch(
-`${API_URL}/incidencias`,
-{
-method:'POST',
-headers:{
-'Content-Type':'application/json'
-},
-body:JSON.stringify(datos)
-}
-);
-
-if(respuesta.ok){
-
-alert(
-'Incidencia registrada'
-);
-
-window.location.href=
-'historial.html';
-
-}
-
-}catch(error){
-
-console.error(error);
-
-alert(
-'Error al registrar'
-);
-
-}
-
+    } catch (error) {
+        console.error(error);
+        alert('Error al registrar');
+    }
 }
 
 async function cargarIncidencias() {
@@ -189,6 +121,10 @@ async function cargarIncidencias() {
 
             if (rol === 'Operador') {
                 acciones = `
+                    <button onclick="editarIncidencia(${incidencia.id})">
+                        Editar
+                    </button>
+
                     <button onclick="generarReporte(${incidencia.id})">
                         Generar reporte
                     </button>
@@ -211,6 +147,30 @@ async function cargarIncidencias() {
                 `;
             }
 
+            if (rol === 'Administrador') {
+                acciones = `
+                    <button onclick="editarIncidencia(${incidencia.id})">
+                        Editar
+                    </button>
+
+                    <button onclick="generarReporte(${incidencia.id})">
+                        Generar reporte
+                    </button>
+
+                    <button onclick="actualizarEstado(${incidencia.id}, 'En revisión')">
+                        En revisión
+                    </button>
+
+                    <button onclick="actualizarEstado(${incidencia.id}, 'Resuelto')">
+                        Resuelto
+                    </button>
+
+                    <button onclick="eliminarIncidencia(${incidencia.id})">
+                        Eliminar
+                    </button>
+                `;
+            }
+
             fila.innerHTML = `
                 <td>${incidencia.id}</td>
                 <td>${incidencia.sede}</td>
@@ -228,6 +188,78 @@ async function cargarIncidencias() {
     } catch (error) {
         console.error(error);
         alert('Error al cargar incidencias');
+    }
+}
+
+async function editarIncidencia(id) {
+    try {
+        const respuesta = await fetch(`${API_URL}/incidencias/${id}`);
+
+        if (!respuesta.ok) {
+            alert('No se pudo obtener la incidencia');
+            return;
+        }
+
+        const incidencia = await respuesta.json();
+
+        const nuevaSede = prompt('Editar sede:', incidencia.sede);
+        if (nuevaSede === null) {
+            return;
+        }
+
+        const nuevaUbicacion = prompt('Editar cámara / ubicación:', incidencia.ubicacion);
+        if (nuevaUbicacion === null) {
+            return;
+        }
+
+        const nuevaDescripcion = prompt('Editar descripción:', incidencia.descripcion);
+        if (nuevaDescripcion === null) {
+            return;
+        }
+
+        const nuevoEstado = prompt('Editar estado:', incidencia.estado);
+        if (nuevoEstado === null) {
+            return;
+        }
+
+        const enviadoJefatura = confirm('¿La incidencia está enviada a jefatura?');
+
+        if (
+            nuevaSede.trim() === '' ||
+            nuevaUbicacion.trim() === '' ||
+            nuevaDescripcion.trim() === '' ||
+            nuevoEstado.trim() === ''
+        ) {
+            alert('No puede dejar campos vacíos');
+            return;
+        }
+
+        const datosActualizados = {
+            sede: nuevaSede.trim(),
+            ubicacion: nuevaUbicacion.trim(),
+            descripcion: nuevaDescripcion.trim(),
+            estado: nuevoEstado.trim(),
+            enviado_jefatura: enviadoJefatura
+        };
+
+        const actualizar = await fetch(`${API_URL}/incidencias/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datosActualizados)
+        });
+
+        if (actualizar.ok) {
+            alert('Incidencia actualizada correctamente');
+            cargarIncidencias();
+        } else {
+            alert('Error al actualizar incidencia');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al editar incidencia');
     }
 }
 
@@ -280,7 +312,7 @@ async function actualizarEstado(id, estado) {
 }
 
 async function eliminarIncidencia(id) {
-    const confirmar = confirm('¿Desea eliminar esta incidencia?');
+    const confirmar = confirm('¿Desea eliminar esta incidencia? Esta acción será lógica, no borrará el registro definitivamente.');
 
     if (!confirmar) {
         return;
@@ -292,7 +324,7 @@ async function eliminarIncidencia(id) {
         });
 
         if (respuesta.ok) {
-            alert('Incidencia eliminada');
+            alert('Incidencia eliminada lógicamente');
             cargarIncidencias();
         } else {
             alert('Error al eliminar incidencia');
