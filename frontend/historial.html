@@ -15,6 +15,35 @@
 
     <p id="usuarioActivo"></p>
 
+    <h2>Filtros de búsqueda</h2>
+
+    <select id="filtro_establecimiento_incidencia" onchange="aplicarFiltrosIncidencias()">
+        <option value="">Todos los establecimientos</option>
+    </select>
+
+    <select id="filtro_estado_incidencia" onchange="aplicarFiltrosIncidencias()">
+        <option value="">Todos los estados</option>
+        <option value="Pendiente">Pendiente</option>
+        <option value="En revisión">En revisión</option>
+        <option value="Resuelto">Resuelto</option>
+    </select>
+
+    <label>
+        Desde:
+        <input type="date" id="filtro_fecha_desde" onchange="aplicarFiltrosIncidencias()">
+    </label>
+
+    <label>
+        Hasta:
+        <input type="date" id="filtro_fecha_hasta" onchange="aplicarFiltrosIncidencias()">
+    </label>
+
+    <button onclick="limpiarFiltrosIncidencias()">
+        Limpiar filtros
+    </button>
+
+    <hr>
+
     <table>
         <thead>
             <tr>
@@ -34,7 +63,7 @@
     </table>
 
     <button onclick="window.location.href='dashboard.html'">
-        Volver
+        Volver al menú principal
     </button>
 
 </div>
@@ -54,7 +83,7 @@
 <script src="js/app.js"></script>
 
 <script>
-    cargarIncidencias();
+    iniciarHistorialIncidencias();
 </script>
 
 </body>

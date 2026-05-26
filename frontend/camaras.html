@@ -54,6 +54,25 @@
 
     <hr>
 
+    <h2>Filtros de Cámaras</h2>
+
+    <select id="filtro_establecimiento_camara" onchange="aplicarFiltrosCamaras()">
+        <option value="">Todos los establecimientos</option>
+    </select>
+
+    <input
+        type="text"
+        id="filtro_codigo_camara"
+        placeholder="Buscar por código de cámara"
+        onkeyup="aplicarFiltrosCamaras()"
+    >
+
+    <button onclick="limpiarFiltrosCamaras()">
+        Limpiar filtros
+    </button>
+
+    <hr>
+
     <h2>Listado de Cámaras</h2>
 
     <table>

@@ -1,5 +1,8 @@
 const API_URL = 'https://sistema-gestion-camaras-ipla.onrender.com';
 
+let listaIncidencias = [];
+let listaCamarasGestion = [];
+
 /* ============================================================
    UTILIDADES
 ============================================================ */
@@ -7,6 +10,16 @@ const API_URL = 'https://sistema-gestion-camaras-ipla.onrender.com';
 function obtenerIdIncidenciaDesdeURL() {
     const parametros = new URLSearchParams(window.location.search);
     return parametros.get('id');
+}
+
+function volverDesdeFormularioIncidencia() {
+    const id = obtenerIdIncidenciaDesdeURL();
+
+    if (id) {
+        window.location.href = 'historial.html';
+    } else {
+        window.location.href = 'dashboard.html';
+    }
 }
 
 /* ============================================================
@@ -96,6 +109,14 @@ async function iniciarFormularioIncidencia() {
     const id = obtenerIdIncidenciaDesdeURL();
 
     await cargarEstablecimientos();
+
+    const botonVolver = document.getElementById('btnVolverIncidencia');
+
+    if (botonVolver) {
+        botonVolver.innerText = id
+            ? 'Volver al historial'
+            : 'Volver al menú principal';
+    }
 
     const selectEstablecimiento = document.getElementById('establecimiento');
 
@@ -260,7 +281,131 @@ async function actualizarIncidencia(id) {
     }
 }
 
+/* ============================================================
+   HISTORIAL DE INCIDENCIAS CON FILTROS
+============================================================ */
+
+async function iniciarHistorialIncidencias() {
+    await cargarFiltroEstablecimientosIncidencias();
+    await cargarIncidencias();
+}
+
+async function cargarFiltroEstablecimientosIncidencias() {
+    try {
+        const respuesta = await fetch(`${API_URL}/establecimientos`);
+        const establecimientos = await respuesta.json();
+
+        const select = document.getElementById('filtro_establecimiento_incidencia');
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = '<option value="">Todos los establecimientos</option>';
+
+        establecimientos.forEach(item => {
+            select.innerHTML += `
+                <option value="${item.nombre_establecimiento}">
+                    ${item.nombre_establecimiento}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 async function cargarIncidencias() {
+    const tabla = document.getElementById('tabla-incidencias');
+
+    if (!tabla) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/incidencias`);
+        listaIncidencias = await respuesta.json();
+
+        aplicarFiltrosIncidencias();
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar incidencias');
+    }
+}
+
+function aplicarFiltrosIncidencias() {
+    const tabla = document.getElementById('tabla-incidencias');
+
+    if (!tabla) {
+        return;
+    }
+
+    const filtroEstablecimiento = document.getElementById('filtro_establecimiento_incidencia')?.value || '';
+    const filtroEstado = document.getElementById('filtro_estado_incidencia')?.value || '';
+    const fechaDesde = document.getElementById('filtro_fecha_desde')?.value || '';
+    const fechaHasta = document.getElementById('filtro_fecha_hasta')?.value || '';
+
+    let incidenciasFiltradas = listaIncidencias;
+
+    if (filtroEstablecimiento !== '') {
+        incidenciasFiltradas = incidenciasFiltradas.filter(incidencia =>
+            incidencia.sede === filtroEstablecimiento
+        );
+    }
+
+    if (filtroEstado !== '') {
+        incidenciasFiltradas = incidenciasFiltradas.filter(incidencia =>
+            incidencia.estado === filtroEstado
+        );
+    }
+
+    if (fechaDesde !== '') {
+        incidenciasFiltradas = incidenciasFiltradas.filter(incidencia => {
+            const fechaIncidencia = new Date(incidencia.fecha);
+            const desde = new Date(fechaDesde + 'T00:00:00');
+            return fechaIncidencia >= desde;
+        });
+    }
+
+    if (fechaHasta !== '') {
+        incidenciasFiltradas = incidenciasFiltradas.filter(incidencia => {
+            const fechaIncidencia = new Date(incidencia.fecha);
+            const hasta = new Date(fechaHasta + 'T23:59:59');
+            return fechaIncidencia <= hasta;
+        });
+    }
+
+    mostrarIncidenciasEnTabla(incidenciasFiltradas);
+}
+
+function limpiarFiltrosIncidencias() {
+    const filtroEstablecimiento = document.getElementById('filtro_establecimiento_incidencia');
+    const filtroEstado = document.getElementById('filtro_estado_incidencia');
+    const fechaDesde = document.getElementById('filtro_fecha_desde');
+    const fechaHasta = document.getElementById('filtro_fecha_hasta');
+
+    if (filtroEstablecimiento) {
+        filtroEstablecimiento.value = '';
+    }
+
+    if (filtroEstado) {
+        filtroEstado.value = '';
+    }
+
+    if (fechaDesde) {
+        fechaDesde.value = '';
+    }
+
+    if (fechaHasta) {
+        fechaHasta.value = '';
+    }
+
+    aplicarFiltrosIncidencias();
+}
+
+function mostrarIncidenciasEnTabla(incidencias) {
     const tabla = document.getElementById('tabla-incidencias');
 
     if (!tabla) {
@@ -269,91 +414,91 @@ async function cargarIncidencias() {
 
     const rol = localStorage.getItem('rol');
 
-    try {
-        const respuesta = await fetch(`${API_URL}/incidencias`);
-        const incidencias = await respuesta.json();
+    tabla.innerHTML = '';
 
-        tabla.innerHTML = '';
-
-        incidencias.forEach(incidencia => {
-            const fila = document.createElement('tr');
-
-            const reporte = incidencia.enviado_jefatura
-                ? 'Enviado'
-                : 'No enviado';
-
-            let acciones = '';
-
-            if (rol === 'Operador') {
-                acciones = `
-                    <button onclick="window.location.href='registrar.html?id=${incidencia.id}'">
-                        Editar
-                    </button>
-
-                    <button onclick="generarReporte(${incidencia.id})">
-                        Generar reporte
-                    </button>
-
-                    <button onclick="eliminarIncidencia(${incidencia.id})">
-                        Eliminar
-                    </button>
-                `;
-            }
-
-            if (rol === 'Tecnico') {
-                acciones = `
-                    <button onclick="actualizarEstado(${incidencia.id}, 'En revisión')">
-                        En revisión
-                    </button>
-
-                    <button onclick="actualizarEstado(${incidencia.id}, 'Resuelto')">
-                        Resuelto
-                    </button>
-                `;
-            }
-
-            if (rol === 'Administrador') {
-                acciones = `
-                    <button onclick="window.location.href='registrar.html?id=${incidencia.id}'">
-                        Editar
-                    </button>
-
-                    <button onclick="generarReporte(${incidencia.id})">
-                        Generar reporte
-                    </button>
-
-                    <button onclick="actualizarEstado(${incidencia.id}, 'En revisión')">
-                        En revisión
-                    </button>
-
-                    <button onclick="actualizarEstado(${incidencia.id}, 'Resuelto')">
-                        Resuelto
-                    </button>
-
-                    <button onclick="eliminarIncidencia(${incidencia.id})">
-                        Eliminar
-                    </button>
-                `;
-            }
-
-            fila.innerHTML = `
-                <td>${incidencia.id}</td>
-                <td>${incidencia.sede}</td>
-                <td>${incidencia.ubicacion}</td>
-                <td>${incidencia.descripcion}</td>
-                <td>${incidencia.estado}</td>
-                <td>${reporte}</td>
-                <td>${new Date(incidencia.fecha).toLocaleString()}</td>
-                <td>${acciones}</td>
-            `;
-
-            tabla.appendChild(fila);
-        });
-
-    } catch (error) {
-        console.error(error);
-        alert('Error al cargar incidencias');
+    if (incidencias.length === 0) {
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="8">No se encontraron incidencias con los filtros seleccionados.</td>
+            </tr>
+        `;
+        return;
     }
+
+    incidencias.forEach(incidencia => {
+        const fila = document.createElement('tr');
+
+        const reporte = incidencia.enviado_jefatura
+            ? 'Enviado'
+            : 'No enviado';
+
+        let acciones = '';
+
+        if (rol === 'Operador') {
+            acciones = `
+                <button onclick="window.location.href='registrar.html?id=${incidencia.id}'">
+                    Editar
+                </button>
+
+                <button onclick="generarReporte(${incidencia.id})">
+                    Generar reporte
+                </button>
+
+                <button onclick="eliminarIncidencia(${incidencia.id})">
+                    Eliminar
+                </button>
+            `;
+        }
+
+        if (rol === 'Tecnico') {
+            acciones = `
+                <button onclick="actualizarEstado(${incidencia.id}, 'En revisión')">
+                    En revisión
+                </button>
+
+                <button onclick="actualizarEstado(${incidencia.id}, 'Resuelto')">
+                    Resuelto
+                </button>
+            `;
+        }
+
+        if (rol === 'Administrador') {
+            acciones = `
+                <button onclick="window.location.href='registrar.html?id=${incidencia.id}'">
+                    Editar
+                </button>
+
+                <button onclick="generarReporte(${incidencia.id})">
+                    Generar reporte
+                </button>
+
+                <button onclick="actualizarEstado(${incidencia.id}, 'En revisión')">
+                    En revisión
+                </button>
+
+                <button onclick="actualizarEstado(${incidencia.id}, 'Resuelto')">
+                    Resuelto
+                </button>
+
+                <button onclick="eliminarIncidencia(${incidencia.id})">
+                    Eliminar
+                </button>
+            `;
+        }
+
+        fila.innerHTML = `
+            <td>${incidencia.id}</td>
+            <td>${incidencia.sede}</td>
+            <td>${incidencia.ubicacion}</td>
+            <td>${incidencia.descripcion}</td>
+            <td>${incidencia.estado}</td>
+            <td>${reporte}</td>
+            <td>${new Date(incidencia.fecha).toLocaleString()}</td>
+            <td>${acciones}</td>
+        `;
+
+        tabla.appendChild(fila);
+    });
 }
 
 async function generarReporte(id) {
@@ -595,6 +740,7 @@ async function eliminarEstablecimiento(id) {
 
 async function iniciarFormularioCamara() {
     await cargarEstablecimientosParaCamara();
+    await cargarFiltroEstablecimientosCamaras();
     await cargarCamarasGestion();
 }
 
@@ -635,6 +781,32 @@ async function cargarEstablecimientosParaCamara(valorSeleccionado = '') {
     } catch (error) {
         console.error(error);
         alert('Error al cargar establecimientos');
+    }
+}
+
+async function cargarFiltroEstablecimientosCamaras() {
+    try {
+        const respuesta = await fetch(`${API_URL}/establecimientos`);
+        const establecimientos = await respuesta.json();
+
+        const select = document.getElementById('filtro_establecimiento_camara');
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = '<option value="">Todos los establecimientos</option>';
+
+        establecimientos.forEach(item => {
+            select.innerHTML += `
+                <option value="${item.nombre_establecimiento}">
+                    ${item.nombre_establecimiento}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
     }
 }
 
@@ -683,6 +855,7 @@ async function guardarCamara() {
             alert(id === '' ? 'Cámara registrada' : 'Cámara actualizada');
             limpiarFormularioCamara();
             await cargarEstablecimientosParaCamara();
+            await cargarFiltroEstablecimientosCamaras();
             await cargarCamarasGestion();
         } else {
             alert('Error al guardar cámara');
@@ -703,37 +876,98 @@ async function cargarCamarasGestion() {
 
     try {
         const respuesta = await fetch(`${API_URL}/camaras`);
-        const camaras = await respuesta.json();
+        listaCamarasGestion = await respuesta.json();
 
-        tabla.innerHTML = '';
-
-        camaras.forEach(item => {
-            const fila = document.createElement('tr');
-
-            fila.innerHTML = `
-                <td>${item.id_camara}</td>
-                <td>${item.nombre_establecimiento}</td>
-                <td>${item.codigo_camara}</td>
-                <td>${item.ubicacion}</td>
-                <td>${item.estado}</td>
-                <td>
-                    <button onclick="editarCamara(${item.id_camara})">
-                        Editar
-                    </button>
-
-                    <button onclick="eliminarCamara(${item.id_camara})">
-                        Eliminar
-                    </button>
-                </td>
-            `;
-
-            tabla.appendChild(fila);
-        });
+        aplicarFiltrosCamaras();
 
     } catch (error) {
         console.error(error);
         alert('Error al cargar cámaras');
     }
+}
+
+function aplicarFiltrosCamaras() {
+    const tabla = document.getElementById('tabla-camaras');
+
+    if (!tabla) {
+        return;
+    }
+
+    const filtroEstablecimiento = document.getElementById('filtro_establecimiento_camara')?.value || '';
+    const filtroCodigo = document.getElementById('filtro_codigo_camara')?.value.toLowerCase() || '';
+
+    let camarasFiltradas = listaCamarasGestion;
+
+    if (filtroEstablecimiento !== '') {
+        camarasFiltradas = camarasFiltradas.filter(camara =>
+            camara.nombre_establecimiento === filtroEstablecimiento
+        );
+    }
+
+    if (filtroCodigo !== '') {
+        camarasFiltradas = camarasFiltradas.filter(camara =>
+            camara.codigo_camara.toLowerCase().includes(filtroCodigo)
+        );
+    }
+
+    mostrarCamarasEnTabla(camarasFiltradas);
+}
+
+function limpiarFiltrosCamaras() {
+    const filtroEstablecimiento = document.getElementById('filtro_establecimiento_camara');
+    const filtroCodigo = document.getElementById('filtro_codigo_camara');
+
+    if (filtroEstablecimiento) {
+        filtroEstablecimiento.value = '';
+    }
+
+    if (filtroCodigo) {
+        filtroCodigo.value = '';
+    }
+
+    aplicarFiltrosCamaras();
+}
+
+function mostrarCamarasEnTabla(camaras) {
+    const tabla = document.getElementById('tabla-camaras');
+
+    if (!tabla) {
+        return;
+    }
+
+    tabla.innerHTML = '';
+
+    if (camaras.length === 0) {
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="6">No se encontraron cámaras con los filtros seleccionados.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    camaras.forEach(item => {
+        const fila = document.createElement('tr');
+
+        fila.innerHTML = `
+            <td>${item.id_camara}</td>
+            <td>${item.nombre_establecimiento}</td>
+            <td>${item.codigo_camara}</td>
+            <td>${item.ubicacion}</td>
+            <td>${item.estado}</td>
+            <td>
+                <button onclick="editarCamara(${item.id_camara})">
+                    Editar
+                </button>
+
+                <button onclick="eliminarCamara(${item.id_camara})">
+                    Eliminar
+                </button>
+            </td>
+        `;
+
+        tabla.appendChild(fila);
+    });
 }
 
 async function editarCamara(id) {
