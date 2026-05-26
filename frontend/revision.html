@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revisión Técnica</title>
+
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<div class="contenedor">
+
+    <h1>Revisión Técnica de Incidencia</h1>
+
+    <p id="usuarioActivo"></p>
+
+    <h2>Datos de la incidencia</h2>
+
+    <p><strong>ID:</strong> <span id="revision_id_incidencia"></span></p>
+    <p><strong>Establecimiento:</strong> <span id="revision_sede"></span></p>
+    <p><strong>Cámara:</strong> <span id="revision_camara"></span></p>
+    <p><strong>Descripción:</strong> <span id="revision_descripcion"></span></p>
+    <p><strong>Estado actual:</strong> <span id="revision_estado_actual"></span></p>
+
+    <hr>
+
+    <h2>Registrar revisión</h2>
+
+    <select id="estado_atencion_revision">
+        <option value="">Seleccione estado de atención</option>
+        <option value="En revisión">En revisión</option>
+        <option value="Resuelto">Resuelto</option>
+    </select>
+
+    <select id="id_estado_camara_revision">
+        <option value="">Seleccione estado de cámara revisado</option>
+    </select>
+
+    <textarea
+        id="observacion_revision"
+        placeholder="Ingrese observación técnica de la revisión"
+        rows="5"
+    ></textarea>
+
+    <button onclick="guardarRevisionTecnica()">
+        Guardar revisión
+    </button>
+
+    <button onclick="window.location.href='historial.html'">
+        Volver al historial
+    </button>
+
+</div>
+
+<script>
+    const usuario = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('rol');
+
+    if (!usuario || !rol) {
+        window.location.href = 'login.html';
+    }
+
+    if (rol !== 'Tecnico' && rol !== 'Administrador') {
+        alert('Acceso restringido');
+        window.location.href = 'dashboard.html';
+    }
+
+    document.getElementById('usuarioActivo').innerText =
+        'Usuario: ' + usuario + ' | Perfil: ' + rol;
+</script>
+
+<script src="js/app.js"></script>
+
+<script>
+    iniciarRevisionTecnica();
+</script>
+
+</body>
+</html>

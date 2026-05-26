@@ -89,12 +89,17 @@ async function cargarCamaras(valorSeleccionado = '', establecimientoSeleccionado
         }
 
         camarasFiltradas.forEach(item => {
-            const selected = item.codigo_camara === valorSeleccionado
+            const selected = String(item.id_camara) === String(valorSeleccionado)
                 ? 'selected'
                 : '';
 
             select.innerHTML += `
-                <option value="${item.codigo_camara}" ${selected}>
+                <option
+                    value="${item.id_camara}"
+                    data-codigo="${item.codigo_camara}"
+                    data-ubicacion="${item.ubicacion}"
+                    ${selected}
+                >
                     ${item.codigo_camara} - ${item.ubicacion}
                 </option>
             `;
@@ -144,7 +149,7 @@ async function cargarIncidenciaParaEditar(id) {
         document.getElementById('tituloFormulario').innerText = 'Editar Incidencia';
 
         await cargarEstablecimientos(incidencia.sede);
-        await cargarCamaras(incidencia.ubicacion, incidencia.sede);
+        await cargarCamaras(incidencia.id_camara, incidencia.sede);
 
         document.getElementById('descripcion').value = incidencia.descripcion;
         document.getElementById('enviado_jefatura').checked = incidencia.enviado_jefatura;
@@ -173,7 +178,9 @@ async function guardarIncidencia() {
 
 async function registrarIncidencia() {
     const sede = document.getElementById('establecimiento').value;
-    const ubicacion = document.getElementById('camara').value;
+    const selectCamara = document.getElementById('camara');
+    const id_camara = selectCamara.value;
+    const ubicacion = selectCamara.options[selectCamara.selectedIndex].text.trim();
     const estadoDetectado = document.getElementById('estado_camara').value;
     const descripcion = document.getElementById('descripcion').value;
     const enviado_jefatura = document.getElementById('enviado_jefatura').checked;
@@ -191,11 +198,12 @@ async function registrarIncidencia() {
     }
 
     const datos = {
-        sede,
-        ubicacion,
-        descripcion: `${estadoDetectado}: ${descripcion.trim()}`,
-        estado,
-        enviado_jefatura
+    sede,
+    ubicacion,
+    descripcion: `${estadoDetectado}: ${descripcion.trim()}`,
+    estado,
+    enviado_jefatura,
+    id_camara
     };
 
     try {
@@ -222,7 +230,9 @@ async function registrarIncidencia() {
 
 async function actualizarIncidencia(id) {
     const sede = document.getElementById('establecimiento').value;
-    const ubicacion = document.getElementById('camara').value;
+    const selectCamara = document.getElementById('camara');
+    const id_camara = selectCamara.value;
+    const ubicacion = selectCamara.options[selectCamara.selectedIndex].text.trim();
     const estadoDetectado = document.getElementById('estado_camara').value;
     const descripcion = document.getElementById('descripcion').value;
     const enviado_jefatura = document.getElementById('enviado_jefatura').checked;
@@ -257,7 +267,8 @@ async function actualizarIncidencia(id) {
             ubicacion,
             descripcion: descripcionFinal,
             estado: incidenciaActual.estado,
-            enviado_jefatura
+            enviado_jefatura,
+            id_camara
         };
 
         const respuesta = await fetch(`${API_URL}/incidencias/${id}`, {
@@ -419,7 +430,8 @@ function mostrarIncidenciasEnTabla(incidencias) {
     if (incidencias.length === 0) {
         tabla.innerHTML = `
             <tr>
-                <td colspan="8">No se encontraron incidencias con los filtros seleccionados.</td>
+                <td colspan="9">No se encontraron incidencias con los filtros seleccionados.</td>
+                <td>${incidencia.observacion_tecnica || 'Sin revisión técnica'}</td>
             </tr>
         `;
         return;
@@ -452,12 +464,8 @@ function mostrarIncidenciasEnTabla(incidencias) {
 
         if (rol === 'Tecnico') {
             acciones = `
-                <button onclick="actualizarEstado(${incidencia.id}, 'En revisión')">
-                    En revisión
-                </button>
-
-                <button onclick="actualizarEstado(${incidencia.id}, 'Resuelto')">
-                    Resuelto
+                <button onclick="window.location.href='revision.html?id=${incidencia.id}'">
+                    Atender / Revisar
                 </button>
             `;
         }
@@ -478,6 +486,10 @@ function mostrarIncidenciasEnTabla(incidencias) {
 
                 <button onclick="actualizarEstado(${incidencia.id}, 'Resuelto')">
                     Resuelto
+                </button>
+
+                <button onclick="window.location.href='revision.html?id=${incidencia.id}'">
+                    Atender / Revisar
                 </button>
 
                 <button onclick="eliminarIncidencia(${incidencia.id})">
@@ -1354,5 +1366,127 @@ async function eliminarUsuario(id) {
     } catch (error) {
         console.error(error);
         alert('Error al eliminar usuario');
+    }
+}
+/* ============================================================
+   REVISIÓN TÉCNICA DE INCIDENCIAS
+============================================================ */
+
+function obtenerIdIncidenciaRevisionDesdeURL() {
+    const parametros = new URLSearchParams(window.location.search);
+    return parametros.get('id');
+}
+
+async function iniciarRevisionTecnica() {
+    await cargarEstadosCamaraRevision();
+    await cargarDatosIncidenciaRevision();
+}
+
+async function cargarEstadosCamaraRevision() {
+    try {
+        const respuesta = await fetch(`${API_URL}/estados-camara`);
+        const estados = await respuesta.json();
+
+        const select = document.getElementById('id_estado_camara_revision');
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = '<option value="">Seleccione estado de cámara revisado</option>';
+
+        estados.forEach(estado => {
+            select.innerHTML += `
+                <option value="${estado.id_estado}">
+                    ${estado.nombre_estado}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar estados de cámara');
+    }
+}
+
+async function cargarDatosIncidenciaRevision() {
+    const id = obtenerIdIncidenciaRevisionDesdeURL();
+
+    if (!id) {
+        alert('No se encontró la incidencia');
+        window.location.href = 'historial.html';
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/incidencias/${id}`);
+
+        if (!respuesta.ok) {
+            alert('No se pudo cargar la incidencia');
+            window.location.href = 'historial.html';
+            return;
+        }
+
+        const incidencia = await respuesta.json();
+
+        document.getElementById('revision_id_incidencia').innerText = incidencia.id;
+        document.getElementById('revision_sede').innerText = incidencia.sede;
+        document.getElementById('revision_camara').innerText = incidencia.ubicacion;
+        document.getElementById('revision_descripcion').innerText = incidencia.descripcion;
+        document.getElementById('revision_estado_actual').innerText = incidencia.estado;
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar datos de incidencia');
+    }
+}
+
+async function guardarRevisionTecnica() {
+    const id = obtenerIdIncidenciaRevisionDesdeURL();
+
+    const estado_atencion = document.getElementById('estado_atencion_revision').value;
+    const id_estado = document.getElementById('id_estado_camara_revision').value;
+    const observacion = document.getElementById('observacion_revision').value;
+
+    const id_usuario = localStorage.getItem('id_usuario');
+    const nombre_usuario = localStorage.getItem('usuario');
+
+    if (
+        estado_atencion === '' ||
+        id_estado === '' ||
+        observacion.trim() === ''
+    ) {
+        alert('Complete todos los campos de la revisión');
+        return;
+    }
+
+    const datos = {
+        id_usuario,
+        nombre_usuario,
+        estado_atencion,
+        id_estado,
+        observacion: observacion.trim()
+    };
+
+    try {
+        const respuesta = await fetch(`${API_URL}/incidencias/${id}/revision`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datos)
+        });
+
+        if (respuesta.ok) {
+            alert('Revisión técnica registrada correctamente');
+            window.location.href = 'historial.html';
+        } else {
+            const error = await respuesta.json();
+            alert(error.mensaje || 'Error al registrar revisión técnica');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al registrar revisión técnica');
     }
 }

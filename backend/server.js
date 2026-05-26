@@ -74,10 +74,21 @@ app.post('/login', async (req, res) => {
 app.get('/incidencias', async (req, res) => {
     try {
         const resultado = await pool.query(
-            `SELECT *
-             FROM incidencias
-             WHERE activo = true
-             ORDER BY fecha DESC`
+            `SELECT
+                i.*,
+                rc.observacion AS observacion_tecnica,
+                rc.fecha_revision,
+                ec.nombre_estado AS estado_camara_revision,
+                u.nombre AS tecnico_responsable
+             FROM incidencias i
+             LEFT JOIN revision_camara rc
+             ON i.id_revision = rc.id_revision
+             LEFT JOIN estado_camara ec
+             ON rc.id_estado = ec.id_estado
+             LEFT JOIN usuario u
+             ON rc.id_usuario = u.id_usuario
+             WHERE i.activo = true
+             ORDER BY i.fecha DESC`
         );
 
         res.json(resultado.rows);
@@ -127,7 +138,8 @@ app.post('/incidencias', async (req, res) => {
             ubicacion,
             descripcion,
             estado,
-            enviado_jefatura
+            enviado_jefatura,
+            id_camara
         } = req.body;
 
         const resultado = await pool.query(
@@ -138,16 +150,18 @@ app.post('/incidencias', async (req, res) => {
                 descripcion,
                 estado,
                 enviado_jefatura,
-                activo
+                activo,
+                id_camara
             )
-            VALUES ($1, $2, $3, $4, $5, true)
+            VALUES ($1, $2, $3, $4, $5, true, $6)
             RETURNING *`,
             [
                 sede,
                 ubicacion,
                 descripcion,
                 estado,
-                enviado_jefatura || false
+                enviado_jefatura || false,
+                id_camara || null
             ]
         );
 
@@ -171,7 +185,8 @@ app.put('/incidencias/:id', async (req, res) => {
             ubicacion,
             descripcion,
             estado,
-            enviado_jefatura
+            enviado_jefatura,
+            id_camara
         } = req.body;
 
         if (!sede || !ubicacion || !descripcion || !estado) {
@@ -187,8 +202,9 @@ app.put('/incidencias/:id', async (req, res) => {
                 ubicacion = $2,
                 descripcion = $3,
                 estado = $4,
-                enviado_jefatura = $5
-             WHERE id = $6
+                enviado_jefatura = $5,
+                id_camara = $6
+             WHERE id = $7
              AND activo = true
              RETURNING *`,
             [
@@ -197,6 +213,7 @@ app.put('/incidencias/:id', async (req, res) => {
                 descripcion,
                 estado,
                 enviado_jefatura || false,
+                id_camara || null,
                 id
             ]
         );
@@ -1105,6 +1122,190 @@ app.delete('/usuarios/:id', async (req, res) => {
         res.status(500).json({
             mensaje: 'Error al eliminar usuario'
         });
+    }
+});
+
+/* ============================================================
+   ESTADOS DE CÁMARA
+============================================================ */
+
+app.get('/estados-camara', async (req, res) => {
+    try {
+        const resultado = await pool.query(
+            `SELECT *
+             FROM estado_camara
+             ORDER BY id_estado`
+        );
+
+        res.json(resultado.rows);
+
+    } catch (error) {
+        console.error('Error al obtener estados de cámara:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al obtener estados de cámara'
+        });
+    }
+});
+
+/* ============================================================
+   REVISIÓN TÉCNICA
+============================================================ */
+
+app.post('/incidencias/:id/revision', async (req, res) => {
+    const cliente = await pool.connect();
+
+    try {
+        const { id } = req.params;
+
+        const {
+            id_usuario,
+            nombre_usuario,
+            id_estado,
+            estado_atencion,
+            observacion
+        } = req.body;
+
+        if (!id_estado || !estado_atencion || !observacion) {
+            return res.status(400).json({
+                mensaje: 'Faltan datos obligatorios para registrar la revisión'
+            });
+        }
+
+        await cliente.query('BEGIN');
+
+        const incidencia = await cliente.query(
+            `SELECT *
+             FROM incidencias
+             WHERE id = $1
+             AND activo = true`,
+            [id]
+        );
+
+        if (incidencia.rows.length === 0) {
+            await cliente.query('ROLLBACK');
+
+            return res.status(404).json({
+                mensaje: 'Incidencia no encontrada'
+            });
+        }
+
+        let idCamara = incidencia.rows[0].id_camara;
+
+        if (!idCamara && incidencia.rows[0].ubicacion) {
+            const camaraEncontrada = await cliente.query(
+                `SELECT id_camara
+                 FROM camara
+                 WHERE $1 LIKE codigo_camara || '%'
+                 AND activo = true
+                 LIMIT 1`,
+                [incidencia.rows[0].ubicacion]
+            );
+
+            if (camaraEncontrada.rows.length > 0) {
+                idCamara = camaraEncontrada.rows[0].id_camara;
+            }
+        }
+
+        let idUsuarioTecnico = id_usuario || null;
+
+        if (!idUsuarioTecnico && nombre_usuario) {
+            const usuarioTecnico = await cliente.query(
+                `SELECT id_usuario
+                 FROM usuario
+                 WHERE nombre = $1
+                 AND estado_usuario = true
+                 LIMIT 1`,
+                [nombre_usuario]
+            );
+
+            if (usuarioTecnico.rows.length > 0) {
+                idUsuarioTecnico = usuarioTecnico.rows[0].id_usuario;
+            }
+        }
+
+        const nuevoIdRevision = await cliente.query(
+            `SELECT COALESCE(MAX(id_revision), 0) + 1 AS nuevo_id
+             FROM revision_camara`
+        );
+
+        const idRevision = nuevoIdRevision.rows[0].nuevo_id;
+
+        await cliente.query(
+            `INSERT INTO revision_camara
+             (
+                id_revision,
+                id_usuario,
+                id_camara,
+                id_estado,
+                fecha_revision,
+                observacion
+             )
+             VALUES ($1, $2, $3, $4, NOW(), $5)`,
+            [
+                idRevision,
+                idUsuarioTecnico,
+                idCamara,
+                id_estado,
+                observacion
+            ]
+        );
+
+        await cliente.query(
+            `UPDATE incidencias
+             SET
+                estado = $1,
+                id_revision = $2,
+                id_camara = COALESCE(id_camara, $3)
+             WHERE id = $4
+             AND activo = true`,
+            [
+                estado_atencion,
+                idRevision,
+                idCamara,
+                id
+            ]
+        );
+
+        if (idCamara) {
+            const estadoCamara = await cliente.query(
+                `SELECT nombre_estado
+                 FROM estado_camara
+                 WHERE id_estado = $1`,
+                [id_estado]
+            );
+
+            if (estadoCamara.rows.length > 0) {
+                await cliente.query(
+                    `UPDATE camara
+                     SET estado = $1
+                     WHERE id_camara = $2
+                     AND activo = true`,
+                    [
+                        estadoCamara.rows[0].nombre_estado,
+                        idCamara
+                    ]
+                );
+            }
+        }
+
+        await cliente.query('COMMIT');
+
+        res.json({
+            mensaje: 'Revisión técnica registrada correctamente'
+        });
+
+    } catch (error) {
+        await cliente.query('ROLLBACK');
+
+        console.error('Error al registrar revisión técnica:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al registrar revisión técnica'
+        });
+
+    } finally {
+        cliente.release();
     }
 });
 
