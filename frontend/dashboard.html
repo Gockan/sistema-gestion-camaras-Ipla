@@ -15,6 +15,20 @@
 
     <h2 id="bienvenida"></h2>
 
+    <div id="adminPanel">
+
+        <h3>Panel Administrador</h3>
+
+        <p>
+            Desde este módulo se administran usuarios, roles y accesos generales del sistema.
+        </p>
+
+        <a href="usuarios.html">
+            Gestionar usuarios y roles
+        </a>
+
+    </div>
+
     <div id="operadorPanel">
 
         <h3>Panel Operador</h3>
@@ -72,13 +86,21 @@
     document.getElementById('bienvenida').innerText =
         usuario + ' - ' + rol;
 
+    document.getElementById('adminPanel').style.display = 'none';
+    document.getElementById('operadorPanel').style.display = 'none';
+    document.getElementById('tecnicoPanel').style.display = 'none';
+
     if (rol === 'Operador') {
-        document.getElementById('tecnicoPanel').style.display = 'none';
+        document.getElementById('operadorPanel').style.display = 'block';
+
     } else if (rol === 'Tecnico') {
-        document.getElementById('operadorPanel').style.display = 'none';
+        document.getElementById('tecnicoPanel').style.display = 'block';
+
     } else if (rol === 'Administrador') {
+        document.getElementById('adminPanel').style.display = 'block';
         document.getElementById('operadorPanel').style.display = 'block';
         document.getElementById('tecnicoPanel').style.display = 'block';
+
     } else {
         localStorage.clear();
         window.location.href = 'login.html';

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios</title>
+
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<div class="contenedor">
+
+    <h1>Gestión de Usuarios y Roles</h1>
+
+    <p id="usuarioActivo"></p>
+
+    <h2 id="tituloFormularioUsuario">Registrar Usuario</h2>
+
+    <input type="hidden" id="id_usuario">
+
+    <input
+        type="text"
+        id="nombre_usuario"
+        placeholder="Nombre del usuario"
+    >
+
+    <input
+        type="email"
+        id="correo_usuario"
+        placeholder="Correo del usuario"
+    >
+
+    <select id="id_perfil_usuario">
+        <option value="">Seleccione perfil</option>
+    </select>
+
+    <input
+        type="password"
+        id="password_usuario"
+        placeholder="Contraseña. Obligatoria al crear, opcional al editar"
+    >
+
+    <button onclick="guardarUsuario()">
+        Guardar usuario
+    </button>
+
+    <button onclick="limpiarFormularioUsuario()">
+        Limpiar
+    </button>
+
+    <hr>
+
+    <h2>Filtros de Usuarios</h2>
+
+    <input
+        type="text"
+        id="filtro_texto_usuario"
+        placeholder="Buscar por nombre o correo"
+        onkeyup="aplicarFiltrosUsuarios()"
+    >
+
+    <select id="filtro_perfil_usuario" onchange="aplicarFiltrosUsuarios()">
+        <option value="">Todos los perfiles</option>
+    </select>
+
+    <button onclick="limpiarFiltrosUsuarios()">
+        Limpiar filtros
+    </button>
+
+    <hr>
+
+    <h2>Listado de Usuarios Activos</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Perfil</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody id="tabla-usuarios">
+        </tbody>
+    </table>
+
+    <button onclick="window.location.href='dashboard.html'">
+        Volver al menú principal
+    </button>
+
+</div>
+
+<script>
+    const usuario = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('rol');
+
+    if (!usuario || !rol) {
+        window.location.href = 'login.html';
+    }
+
+    if (rol !== 'Administrador') {
+        alert('Acceso restringido. Solo el administrador puede gestionar usuarios.');
+        window.location.href = 'dashboard.html';
+    }
+
+    document.getElementById('usuarioActivo').innerText =
+        'Usuario: ' + usuario + ' | Perfil: ' + rol;
+</script>
+
+<script src="js/app.js"></script>
+
+<script>
+    iniciarGestionUsuarios();
+</script>
+
+</body>
+</html>

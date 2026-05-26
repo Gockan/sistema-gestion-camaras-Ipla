@@ -71,7 +71,6 @@ app.post('/login', async (req, res) => {
    CRUD INCIDENCIAS
 ============================================================ */
 
-/* LISTAR INCIDENCIAS ACTIVAS */
 app.get('/incidencias', async (req, res) => {
     try {
         const resultado = await pool.query(
@@ -92,7 +91,6 @@ app.get('/incidencias', async (req, res) => {
     }
 });
 
-/* OBTENER UNA INCIDENCIA */
 app.get('/incidencias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -122,7 +120,6 @@ app.get('/incidencias/:id', async (req, res) => {
     }
 });
 
-/* CREAR INCIDENCIA */
 app.post('/incidencias', async (req, res) => {
     try {
         const {
@@ -165,7 +162,6 @@ app.post('/incidencias', async (req, res) => {
     }
 });
 
-/* EDITAR INCIDENCIA */
 app.put('/incidencias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -225,7 +221,6 @@ app.put('/incidencias/:id', async (req, res) => {
     }
 });
 
-/* GENERAR REPORTE */
 app.put('/incidencias/:id/reporte', async (req, res) => {
     try {
         const { id } = req.params;
@@ -290,7 +285,6 @@ Estado: ${incidencia.rows[0].estado}`
     }
 });
 
-/* ACTUALIZAR ESTADO */
 app.put('/incidencias/:id/estado', async (req, res) => {
     try {
         const { id } = req.params;
@@ -322,7 +316,6 @@ app.put('/incidencias/:id/estado', async (req, res) => {
     }
 });
 
-/* ELIMINACIÓN LÓGICA DE INCIDENCIAS */
 app.delete('/incidencias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -361,7 +354,6 @@ app.delete('/incidencias/:id', async (req, res) => {
    CRUD ESTABLECIMIENTOS
 ============================================================ */
 
-/* LISTAR ESTABLECIMIENTOS ACTIVOS */
 app.get('/establecimientos', async (req, res) => {
     try {
         const resultado = await pool.query(
@@ -382,7 +374,6 @@ app.get('/establecimientos', async (req, res) => {
     }
 });
 
-/* OBTENER UN ESTABLECIMIENTO */
 app.get('/establecimientos/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -412,7 +403,6 @@ app.get('/establecimientos/:id', async (req, res) => {
     }
 });
 
-/* CREAR ESTABLECIMIENTO */
 app.post('/establecimientos', async (req, res) => {
     try {
         const {
@@ -452,7 +442,6 @@ app.post('/establecimientos', async (req, res) => {
     }
 });
 
-/* EDITAR ESTABLECIMIENTO */
 app.put('/establecimientos/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -503,7 +492,6 @@ app.put('/establecimientos/:id', async (req, res) => {
     }
 });
 
-/* ELIMINACIÓN LÓGICA DE ESTABLECIMIENTO */
 app.delete('/establecimientos/:id', async (req, res) => {
     const cliente = await pool.connect();
 
@@ -565,7 +553,6 @@ app.delete('/establecimientos/:id', async (req, res) => {
    CRUD CÁMARAS
 ============================================================ */
 
-/* LISTAR CÁMARAS ACTIVAS */
 app.get('/camaras', async (req, res) => {
     try {
         const resultado = await pool.query(
@@ -595,7 +582,6 @@ app.get('/camaras', async (req, res) => {
     }
 });
 
-/* OBTENER UNA CÁMARA */
 app.get('/camaras/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -634,7 +620,6 @@ app.get('/camaras/:id', async (req, res) => {
     }
 });
 
-/* CREAR CÁMARA */
 app.post('/camaras', async (req, res) => {
     try {
         const {
@@ -680,7 +665,6 @@ app.post('/camaras', async (req, res) => {
     }
 });
 
-/* EDITAR CÁMARA */
 app.put('/camaras/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -737,7 +721,6 @@ app.put('/camaras/:id', async (req, res) => {
     }
 });
 
-/* ELIMINACIÓN LÓGICA DE CÁMARA */
 app.delete('/camaras/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -768,6 +751,359 @@ app.delete('/camaras/:id', async (req, res) => {
 
         res.status(500).json({
             mensaje: 'Error al eliminar cámara'
+        });
+    }
+});
+
+/* ============================================================
+   PERFILES / ROLES
+============================================================ */
+
+app.get('/perfiles', async (req, res) => {
+    try {
+        const resultado = await pool.query(
+            `SELECT *
+             FROM perfil
+             ORDER BY id_perfil`
+        );
+
+        res.json(resultado.rows);
+
+    } catch (error) {
+        console.error('Error al obtener perfiles:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al obtener perfiles'
+        });
+    }
+});
+
+/* ============================================================
+   CRUD USUARIOS
+============================================================ */
+
+app.get('/usuarios', async (req, res) => {
+    try {
+        const resultado = await pool.query(
+            `SELECT
+                u.id_usuario,
+                u.nombre,
+                u.correo,
+                u.id_perfil,
+                p.nombre_perfil,
+                u.estado_usuario
+             FROM usuario u
+             JOIN perfil p
+             ON u.id_perfil = p.id_perfil
+             WHERE u.estado_usuario = true
+             ORDER BY u.id_usuario`
+        );
+
+        res.json(resultado.rows);
+
+    } catch (error) {
+        console.error('Error al obtener usuarios:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al obtener usuarios'
+        });
+    }
+});
+
+app.get('/usuarios/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const resultado = await pool.query(
+            `SELECT
+                u.id_usuario,
+                u.nombre,
+                u.correo,
+                u.id_perfil,
+                p.nombre_perfil,
+                u.estado_usuario
+             FROM usuario u
+             JOIN perfil p
+             ON u.id_perfil = p.id_perfil
+             WHERE u.id_usuario = $1
+             AND u.estado_usuario = true`,
+            [id]
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(404).json({
+                mensaje: 'Usuario no encontrado'
+            });
+        }
+
+        res.json(resultado.rows[0]);
+
+    } catch (error) {
+        console.error('Error al obtener usuario:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al obtener usuario'
+        });
+    }
+});
+
+app.post('/usuarios', async (req, res) => {
+    try {
+        const {
+            nombre,
+            correo,
+            password,
+            id_perfil
+        } = req.body;
+
+        if (!nombre || !correo || !password || !id_perfil) {
+            return res.status(400).json({
+                mensaje: 'Faltan datos obligatorios'
+            });
+        }
+
+        const perfilExiste = await pool.query(
+            `SELECT id_perfil
+             FROM perfil
+             WHERE id_perfil = $1`,
+            [id_perfil]
+        );
+
+        if (perfilExiste.rows.length === 0) {
+            return res.status(400).json({
+                mensaje: 'Perfil no válido'
+            });
+        }
+
+        const usuarioExistente = await pool.query(
+            `SELECT id_usuario, estado_usuario
+             FROM usuario
+             WHERE correo = $1`,
+            [correo]
+        );
+
+        const hash = await bcrypt.hash(password, 10);
+
+        if (usuarioExistente.rows.length > 0) {
+            const usuario = usuarioExistente.rows[0];
+
+            if (usuario.estado_usuario === true) {
+                return res.status(409).json({
+                    mensaje: 'Ya existe un usuario activo con ese correo'
+                });
+            }
+
+            const restaurado = await pool.query(
+                `UPDATE usuario
+                 SET
+                    nombre = $1,
+                    correo = $2,
+                    contrasena_hash = $3,
+                    id_perfil = $4,
+                    estado_usuario = true
+                 WHERE id_usuario = $5
+                 RETURNING id_usuario, nombre, correo, id_perfil, estado_usuario`,
+                [
+                    nombre,
+                    correo,
+                    hash,
+                    id_perfil,
+                    usuario.id_usuario
+                ]
+            );
+
+            return res.json({
+                mensaje: 'Usuario restaurado y actualizado correctamente',
+                usuario: restaurado.rows[0]
+            });
+        }
+
+        const resultado = await pool.query(
+            `INSERT INTO usuario
+             (
+                nombre,
+                correo,
+                contrasena_hash,
+                id_perfil,
+                estado_usuario
+             )
+             VALUES ($1, $2, $3, $4, true)
+             RETURNING id_usuario, nombre, correo, id_perfil, estado_usuario`,
+            [
+                nombre,
+                correo,
+                hash,
+                id_perfil
+            ]
+        );
+
+        res.json({
+            mensaje: 'Usuario creado correctamente',
+            usuario: resultado.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error al crear usuario:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al crear usuario'
+        });
+    }
+});
+
+app.put('/usuarios/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const {
+            nombre,
+            correo,
+            id_perfil
+        } = req.body;
+
+        if (!nombre || !correo || !id_perfil) {
+            return res.status(400).json({
+                mensaje: 'Faltan datos obligatorios'
+            });
+        }
+
+        const perfilExiste = await pool.query(
+            `SELECT id_perfil
+             FROM perfil
+             WHERE id_perfil = $1`,
+            [id_perfil]
+        );
+
+        if (perfilExiste.rows.length === 0) {
+            return res.status(400).json({
+                mensaje: 'Perfil no válido'
+            });
+        }
+
+        const correoExiste = await pool.query(
+            `SELECT id_usuario
+             FROM usuario
+             WHERE correo = $1
+             AND id_usuario <> $2
+             AND estado_usuario = true`,
+            [correo, id]
+        );
+
+        if (correoExiste.rows.length > 0) {
+            return res.status(409).json({
+                mensaje: 'Ya existe otro usuario activo con ese correo'
+            });
+        }
+
+        const resultado = await pool.query(
+            `UPDATE usuario
+             SET
+                nombre = $1,
+                correo = $2,
+                id_perfil = $3
+             WHERE id_usuario = $4
+             AND estado_usuario = true
+             RETURNING id_usuario, nombre, correo, id_perfil, estado_usuario`,
+            [
+                nombre,
+                correo,
+                id_perfil,
+                id
+            ]
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(404).json({
+                mensaje: 'Usuario no encontrado'
+            });
+        }
+
+        res.json({
+            mensaje: 'Usuario actualizado correctamente',
+            usuario: resultado.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Error al editar usuario:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al editar usuario'
+        });
+    }
+});
+
+app.put('/usuarios/:id/password', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { password } = req.body;
+
+        if (!password) {
+            return res.status(400).json({
+                mensaje: 'Debe ingresar una contraseña'
+            });
+        }
+
+        const hash = await bcrypt.hash(password, 10);
+
+        const resultado = await pool.query(
+            `UPDATE usuario
+             SET contrasena_hash = $1
+             WHERE id_usuario = $2
+             AND estado_usuario = true
+             RETURNING id_usuario, nombre, correo`,
+            [
+                hash,
+                id
+            ]
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(404).json({
+                mensaje: 'Usuario no encontrado'
+            });
+        }
+
+        res.json({
+            mensaje: 'Contraseña actualizada correctamente'
+        });
+
+    } catch (error) {
+        console.error('Error al cambiar contraseña:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al cambiar contraseña'
+        });
+    }
+});
+
+app.delete('/usuarios/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const resultado = await pool.query(
+            `UPDATE usuario
+             SET estado_usuario = false
+             WHERE id_usuario = $1
+             AND estado_usuario = true
+             RETURNING id_usuario, nombre, correo`,
+            [id]
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(404).json({
+                mensaje: 'Usuario no encontrado o ya eliminado'
+            });
+        }
+
+        res.json({
+            mensaje: 'Usuario eliminado lógicamente'
+        });
+
+    } catch (error) {
+        console.error('Error al eliminar usuario:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al eliminar usuario'
         });
     }
 });

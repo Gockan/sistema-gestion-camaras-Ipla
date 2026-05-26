@@ -1021,3 +1021,338 @@ async function eliminarCamara(id) {
         alert('Error al eliminar cámara');
     }
 }
+/* ============================================================
+   CRUD USUARIOS Y GESTIÓN DE ROLES
+============================================================ */
+
+let listaUsuariosGestion = [];
+
+async function iniciarGestionUsuarios() {
+    await cargarPerfilesUsuario();
+    await cargarFiltroPerfilesUsuarios();
+    await cargarUsuariosGestion();
+}
+
+async function cargarPerfilesUsuario(valorSeleccionado = '') {
+    try {
+        const respuesta = await fetch(`${API_URL}/perfiles`);
+        const perfiles = await respuesta.json();
+
+        const select = document.getElementById('id_perfil_usuario');
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = '<option value="">Seleccione perfil</option>';
+
+        perfiles.forEach(perfil => {
+            const selected = String(perfil.id_perfil) === String(valorSeleccionado)
+                ? 'selected'
+                : '';
+
+            select.innerHTML += `
+                <option value="${perfil.id_perfil}" ${selected}>
+                    ${perfil.nombre_perfil}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar perfiles');
+    }
+}
+
+async function cargarFiltroPerfilesUsuarios() {
+    try {
+        const respuesta = await fetch(`${API_URL}/perfiles`);
+        const perfiles = await respuesta.json();
+
+        const select = document.getElementById('filtro_perfil_usuario');
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = '<option value="">Todos los perfiles</option>';
+
+        perfiles.forEach(perfil => {
+            select.innerHTML += `
+                <option value="${perfil.nombre_perfil}">
+                    ${perfil.nombre_perfil}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+function limpiarFormularioUsuario() {
+    document.getElementById('id_usuario').value = '';
+    document.getElementById('nombre_usuario').value = '';
+    document.getElementById('correo_usuario').value = '';
+    document.getElementById('id_perfil_usuario').value = '';
+    document.getElementById('password_usuario').value = '';
+    document.getElementById('tituloFormularioUsuario').innerText = 'Registrar Usuario';
+}
+
+async function guardarUsuario() {
+    const id = document.getElementById('id_usuario').value;
+    const nombre = document.getElementById('nombre_usuario').value;
+    const correo = document.getElementById('correo_usuario').value;
+    const id_perfil = document.getElementById('id_perfil_usuario').value;
+    const password = document.getElementById('password_usuario').value;
+
+    if (
+        nombre.trim() === '' ||
+        correo.trim() === '' ||
+        id_perfil === ''
+    ) {
+        alert('Complete nombre, correo y perfil');
+        return;
+    }
+
+    if (id === '' && password.trim() === '') {
+        alert('Debe ingresar una contraseña para crear el usuario');
+        return;
+    }
+
+    try {
+        if (id === '') {
+            const datos = {
+                nombre: nombre.trim(),
+                correo: correo.trim(),
+                id_perfil,
+                password: password.trim()
+            };
+
+            const respuesta = await fetch(`${API_URL}/usuarios`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datos)
+            });
+
+            if (respuesta.ok) {
+                alert('Usuario registrado correctamente');
+                limpiarFormularioUsuario();
+                cargarUsuariosGestion();
+            } else {
+                const error = await respuesta.json();
+                alert(error.mensaje || 'Error al registrar usuario');
+            }
+
+        } else {
+            const datos = {
+                nombre: nombre.trim(),
+                correo: correo.trim(),
+                id_perfil
+            };
+
+            const respuesta = await fetch(`${API_URL}/usuarios/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datos)
+            });
+
+            if (!respuesta.ok) {
+                const error = await respuesta.json();
+                alert(error.mensaje || 'Error al actualizar usuario');
+                return;
+            }
+
+            if (password.trim() !== '') {
+                const respuestaPassword = await fetch(`${API_URL}/usuarios/${id}/password`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        password: password.trim()
+                    })
+                });
+
+                if (!respuestaPassword.ok) {
+                    const error = await respuestaPassword.json();
+                    alert(error.mensaje || 'Usuario actualizado, pero ocurrió un error al cambiar contraseña');
+                    return;
+                }
+            }
+
+            alert('Usuario actualizado correctamente');
+            limpiarFormularioUsuario();
+            cargarUsuariosGestion();
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al guardar usuario');
+    }
+}
+
+async function cargarUsuariosGestion() {
+    const tabla = document.getElementById('tabla-usuarios');
+
+    if (!tabla) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/usuarios`);
+        listaUsuariosGestion = await respuesta.json();
+
+        aplicarFiltrosUsuarios();
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar usuarios');
+    }
+}
+
+function aplicarFiltrosUsuarios() {
+    const tabla = document.getElementById('tabla-usuarios');
+
+    if (!tabla) {
+        return;
+    }
+
+    const filtroTexto = document.getElementById('filtro_texto_usuario')?.value.toLowerCase() || '';
+    const filtroPerfil = document.getElementById('filtro_perfil_usuario')?.value || '';
+
+    let usuariosFiltrados = listaUsuariosGestion;
+
+    if (filtroTexto !== '') {
+        usuariosFiltrados = usuariosFiltrados.filter(usuario =>
+            usuario.nombre.toLowerCase().includes(filtroTexto) ||
+            usuario.correo.toLowerCase().includes(filtroTexto)
+        );
+    }
+
+    if (filtroPerfil !== '') {
+        usuariosFiltrados = usuariosFiltrados.filter(usuario =>
+            usuario.nombre_perfil === filtroPerfil
+        );
+    }
+
+    mostrarUsuariosEnTabla(usuariosFiltrados);
+}
+
+function limpiarFiltrosUsuarios() {
+    const filtroTexto = document.getElementById('filtro_texto_usuario');
+    const filtroPerfil = document.getElementById('filtro_perfil_usuario');
+
+    if (filtroTexto) {
+        filtroTexto.value = '';
+    }
+
+    if (filtroPerfil) {
+        filtroPerfil.value = '';
+    }
+
+    aplicarFiltrosUsuarios();
+}
+
+function mostrarUsuariosEnTabla(usuarios) {
+    const tabla = document.getElementById('tabla-usuarios');
+
+    if (!tabla) {
+        return;
+    }
+
+    tabla.innerHTML = '';
+
+    if (usuarios.length === 0) {
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="6">No se encontraron usuarios con los filtros seleccionados.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    usuarios.forEach(usuario => {
+        const fila = document.createElement('tr');
+
+        const estado = usuario.estado_usuario
+            ? 'Activo'
+            : 'Inactivo';
+
+        fila.innerHTML = `
+            <td>${usuario.id_usuario}</td>
+            <td>${usuario.nombre}</td>
+            <td>${usuario.correo}</td>
+            <td>${usuario.nombre_perfil}</td>
+            <td>${estado}</td>
+            <td>
+                <button onclick="editarUsuario(${usuario.id_usuario})">
+                    Editar
+                </button>
+
+                <button onclick="eliminarUsuario(${usuario.id_usuario})">
+                    Eliminar
+                </button>
+            </td>
+        `;
+
+        tabla.appendChild(fila);
+    });
+}
+
+async function editarUsuario(id) {
+    try {
+        const respuesta = await fetch(`${API_URL}/usuarios/${id}`);
+
+        if (!respuesta.ok) {
+            alert('No se pudo obtener el usuario');
+            return;
+        }
+
+        const usuario = await respuesta.json();
+
+        document.getElementById('tituloFormularioUsuario').innerText = 'Editar Usuario';
+        document.getElementById('id_usuario').value = usuario.id_usuario;
+        document.getElementById('nombre_usuario').value = usuario.nombre;
+        document.getElementById('correo_usuario').value = usuario.correo;
+        document.getElementById('password_usuario').value = '';
+
+        await cargarPerfilesUsuario(usuario.id_perfil);
+
+        window.scrollTo(0, 0);
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al editar usuario');
+    }
+}
+
+async function eliminarUsuario(id) {
+    const confirmar = confirm('¿Desea eliminar este usuario? La eliminación será lógica y el usuario no podrá iniciar sesión.');
+
+    if (!confirmar) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/usuarios/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (respuesta.ok) {
+            alert('Usuario eliminado lógicamente');
+            cargarUsuariosGestion();
+        } else {
+            const error = await respuesta.json();
+            alert(error.mensaje || 'Error al eliminar usuario');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al eliminar usuario');
+    }
+}
