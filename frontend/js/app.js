@@ -430,8 +430,9 @@ function mostrarIncidenciasEnTabla(incidencias) {
     if (incidencias.length === 0) {
         tabla.innerHTML = `
             <tr>
-                <td colspan="9">No se encontraron incidencias con los filtros seleccionados.</td>
-                <td>${incidencia.observacion_tecnica || 'Sin revisión técnica'}</td>
+                <td colspan="9">
+                    No se encontraron incidencias con los filtros seleccionados.
+                </td>
             </tr>
         `;
         return;
@@ -443,6 +444,10 @@ function mostrarIncidenciasEnTabla(incidencias) {
         const reporte = incidencia.enviado_jefatura
             ? 'Enviado'
             : 'No enviado';
+
+        const observacionTecnica = incidencia.observacion_tecnica
+            ? incidencia.observacion_tecnica
+            : 'Sin revisión técnica';
 
         let acciones = '';
 
@@ -480,14 +485,6 @@ function mostrarIncidenciasEnTabla(incidencias) {
                     Generar reporte
                 </button>
 
-                <button onclick="actualizarEstado(${incidencia.id}, 'En revisión')">
-                    En revisión
-                </button>
-
-                <button onclick="actualizarEstado(${incidencia.id}, 'Resuelto')">
-                    Resuelto
-                </button>
-
                 <button onclick="window.location.href='revision.html?id=${incidencia.id}'">
                     Atender / Revisar
                 </button>
@@ -506,6 +503,7 @@ function mostrarIncidenciasEnTabla(incidencias) {
             <td>${incidencia.estado}</td>
             <td>${reporte}</td>
             <td>${new Date(incidencia.fecha).toLocaleString()}</td>
+            <td>${observacionTecnica}</td>
             <td>${acciones}</td>
         `;
 
