@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registros Eliminados</title>
+
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<div class="contenedor">
+
+    <h1>Registros Eliminados Lógicamente</h1>
+
+    <p id="usuarioActivo"></p>
+
+    <h2>Filtros de búsqueda</h2>
+
+    <select id="tipo_eliminado" onchange="cargarRegistrosEliminados()">
+        <option value="incidencias">Incidencias eliminadas</option>
+        <option value="camaras">Cámaras eliminadas</option>
+        <option value="establecimientos">Establecimientos eliminados</option>
+        <option value="usuarios">Usuarios eliminados</option>
+    </select>
+
+    <input
+        type="text"
+        id="filtro_texto_eliminado"
+        placeholder="Buscar por texto"
+        onkeyup="aplicarFiltrosEliminados()"
+    >
+
+    <label>
+        Desde:
+        <input type="date" id="filtro_fecha_eliminado_desde" onchange="aplicarFiltrosEliminados()">
+    </label>
+
+    <label>
+        Hasta:
+        <input type="date" id="filtro_fecha_eliminado_hasta" onchange="aplicarFiltrosEliminados()">
+    </label>
+
+    <button onclick="limpiarFiltrosEliminados()">
+        Limpiar filtros
+    </button>
+
+    <hr>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Tipo</th>
+                <th>ID</th>
+                <th>Detalle principal</th>
+                <th>Información adicional</th>
+                <th>Fecha eliminación</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody id="tabla-eliminados">
+        </tbody>
+    </table>
+
+    <button onclick="window.location.href='dashboard.html'">
+        Volver al menú principal
+    </button>
+
+</div>
+
+<script>
+    const usuario = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('rol');
+
+    if (!usuario || !rol) {
+        window.location.href = 'login.html';
+    }
+
+    if (rol !== 'Administrador') {
+        alert('Acceso restringido. Solo el administrador puede ver registros eliminados.');
+        window.location.href = 'dashboard.html';
+    }
+
+    document.getElementById('usuarioActivo').innerText =
+        'Usuario: ' + usuario + ' | Perfil: ' + rol;
+</script>
+
+<script src="js/app.js"></script>
+
+<script>
+    iniciarRegistrosEliminados();
+</script>
+
+</body>
+</html>

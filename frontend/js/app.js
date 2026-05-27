@@ -1349,8 +1349,16 @@ async function eliminarUsuario(id) {
     }
 
     try {
+        const id_usuario_actual = localStorage.getItem('id_usuario');
+
         const respuesta = await fetch(`${API_URL}/usuarios/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id_usuario_actual
+            })
         });
 
         if (respuesta.ok) {

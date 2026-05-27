@@ -1096,24 +1096,69 @@ app.put('/usuarios/:id/password', async (req, res) => {
 app.delete('/usuarios/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        const { id_usuario_actual } = req.body;
+
+        if (String(id) === String(id_usuario_actual)) {
+            return res.status(400).json({
+                mensaje: 'No puede eliminar su propia cuenta de administrador mientras está en sesión.'
+            });
+        }
+
+        const usuarioEliminar = await pool.query(
+            `SELECT
+                u.id_usuario,
+                u.nombre,
+                u.correo,
+                p.nombre_perfil
+             FROM usuario u
+             JOIN perfil p
+             ON u.id_perfil = p.id_perfil
+             WHERE u.id_usuario = $1
+             AND u.estado_usuario = true`,
+            [id]
+        );
+
+        if (usuarioEliminar.rows.length === 0) {
+            return res.status(404).json({
+                mensaje: 'Usuario no encontrado o ya eliminado'
+            });
+        }
+
+        const usuario = usuarioEliminar.rows[0];
+
+        if (usuario.nombre_perfil === 'Administrador') {
+            const administradoresActivos = await pool.query(
+                `SELECT COUNT(*) AS total
+                 FROM usuario u
+                 JOIN perfil p
+                 ON u.id_perfil = p.id_perfil
+                 WHERE p.nombre_perfil = 'Administrador'
+                 AND u.estado_usuario = true`
+            );
+
+            const totalAdministradores = Number(administradoresActivos.rows[0].total);
+
+            if (totalAdministradores <= 1) {
+                return res.status(400).json({
+                    mensaje: 'No se puede eliminar este usuario porque es el último administrador activo del sistema.'
+                });
+            }
+        }
 
         const resultado = await pool.query(
             `UPDATE usuario
-             SET estado_usuario = false
+             SET
+                estado_usuario = false,
+                fecha_eliminacion = NOW()
              WHERE id_usuario = $1
              AND estado_usuario = true
              RETURNING id_usuario, nombre, correo`,
             [id]
         );
 
-        if (resultado.rows.length === 0) {
-            return res.status(404).json({
-                mensaje: 'Usuario no encontrado o ya eliminado'
-            });
-        }
-
         res.json({
-            mensaje: 'Usuario eliminado lógicamente'
+            mensaje: 'Usuario eliminado lógicamente',
+            usuario: resultado.rows[0]
         });
 
     } catch (error) {
@@ -1306,6 +1351,232 @@ app.post('/incidencias/:id/revision', async (req, res) => {
 
     } finally {
         cliente.release();
+    }
+});
+
+/* ============================================================
+   REGISTROS ELIMINADOS / PAPELERA ADMINISTRATIVA
+============================================================ */
+
+app.get('/admin/eliminados/:tipo', async (req, res) => {
+    try {
+        const { tipo } = req.params;
+
+        let resultado;
+
+        if (tipo === 'usuarios') {
+            resultado = await pool.query(
+                `SELECT
+                    u.id_usuario,
+                    u.nombre,
+                    u.correo,
+                    u.estado_usuario,
+                    u.fecha_eliminacion,
+                    p.nombre_perfil
+                 FROM usuario u
+                 JOIN perfil p
+                 ON u.id_perfil = p.id_perfil
+                 WHERE u.estado_usuario = false
+                 ORDER BY u.fecha_eliminacion DESC NULLS LAST, u.id_usuario DESC`
+            );
+
+            return res.json(resultado.rows);
+        }
+
+        if (tipo === 'incidencias') {
+            resultado = await pool.query(
+                `SELECT
+                    id,
+                    sede,
+                    ubicacion,
+                    descripcion,
+                    estado,
+                    enviado_jefatura,
+                    fecha,
+                    activo,
+                    fecha_eliminacion
+                 FROM incidencias
+                 WHERE activo = false
+                 ORDER BY fecha_eliminacion DESC NULLS LAST, id DESC`
+            );
+
+            return res.json(resultado.rows);
+        }
+
+        if (tipo === 'camaras') {
+            resultado = await pool.query(
+                `SELECT
+                    c.id_camara,
+                    c.id_establecimiento,
+                    c.codigo_camara,
+                    c.ubicacion,
+                    c.estado,
+                    c.activo,
+                    c.fecha_eliminacion,
+                    e.nombre_establecimiento
+                 FROM camara c
+                 LEFT JOIN establecimiento e
+                 ON c.id_establecimiento = e.id_establecimiento
+                 WHERE c.activo = false
+                 ORDER BY c.fecha_eliminacion DESC NULLS LAST, c.id_camara DESC`
+            );
+
+            return res.json(resultado.rows);
+        }
+
+        if (tipo === 'establecimientos') {
+            resultado = await pool.query(
+                `SELECT
+                    id_establecimiento,
+                    nombre_establecimiento,
+                    direccion,
+                    activo,
+                    fecha_eliminacion
+                 FROM establecimiento
+                 WHERE activo = false
+                 ORDER BY fecha_eliminacion DESC NULLS LAST, id_establecimiento DESC`
+            );
+
+            return res.json(resultado.rows);
+        }
+
+        res.status(400).json({
+            mensaje: 'Tipo de registro no válido'
+        });
+
+    } catch (error) {
+        console.error('Error al obtener registros eliminados:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al obtener registros eliminados'
+        });
+    }
+});
+
+app.put('/admin/restaurar/:tipo/:id', async (req, res) => {
+    try {
+        const { tipo, id } = req.params;
+
+        if (tipo === 'usuarios') {
+            const resultado = await pool.query(
+                `UPDATE usuario
+                 SET
+                    estado_usuario = true,
+                    fecha_eliminacion = NULL
+                 WHERE id_usuario = $1
+                 AND estado_usuario = false
+                 RETURNING id_usuario, nombre, correo`,
+                [id]
+            );
+
+            if (resultado.rows.length === 0) {
+                return res.status(404).json({
+                    mensaje: 'Usuario no encontrado o ya activo'
+                });
+            }
+
+            return res.json({
+                mensaje: 'Usuario restaurado correctamente'
+            });
+        }
+
+        if (tipo === 'incidencias') {
+            const resultado = await pool.query(
+                `UPDATE incidencias
+                 SET
+                    activo = true,
+                    fecha_eliminacion = NULL
+                 WHERE id = $1
+                 AND activo = false
+                 RETURNING id`,
+                [id]
+            );
+
+            if (resultado.rows.length === 0) {
+                return res.status(404).json({
+                    mensaje: 'Incidencia no encontrada o ya activa'
+                });
+            }
+
+            return res.json({
+                mensaje: 'Incidencia restaurada correctamente'
+            });
+        }
+
+        if (tipo === 'establecimientos') {
+            const resultado = await pool.query(
+                `UPDATE establecimiento
+                 SET
+                    activo = true,
+                    fecha_eliminacion = NULL
+                 WHERE id_establecimiento = $1
+                 AND activo = false
+                 RETURNING id_establecimiento`,
+                [id]
+            );
+
+            if (resultado.rows.length === 0) {
+                return res.status(404).json({
+                    mensaje: 'Establecimiento no encontrado o ya activo'
+                });
+            }
+
+            return res.json({
+                mensaje: 'Establecimiento restaurado correctamente'
+            });
+        }
+
+        if (tipo === 'camaras') {
+            const camara = await pool.query(
+                `SELECT
+                    c.id_camara,
+                    c.id_establecimiento,
+                    e.activo AS establecimiento_activo
+                 FROM camara c
+                 LEFT JOIN establecimiento e
+                 ON c.id_establecimiento = e.id_establecimiento
+                 WHERE c.id_camara = $1
+                 AND c.activo = false`,
+                [id]
+            );
+
+            if (camara.rows.length === 0) {
+                return res.status(404).json({
+                    mensaje: 'Cámara no encontrada o ya activa'
+                });
+            }
+
+            if (camara.rows[0].establecimiento_activo !== true) {
+                return res.status(400).json({
+                    mensaje: 'No se puede restaurar la cámara porque su establecimiento asociado está eliminado. Restaure primero el establecimiento.'
+                });
+            }
+
+            await pool.query(
+                `UPDATE camara
+                 SET
+                    activo = true,
+                    fecha_eliminacion = NULL
+                 WHERE id_camara = $1
+                 AND activo = false`,
+                [id]
+            );
+
+            return res.json({
+                mensaje: 'Cámara restaurada correctamente'
+            });
+        }
+
+        res.status(400).json({
+            mensaje: 'Tipo de registro no válido'
+        });
+
+    } catch (error) {
+        console.error('Error al restaurar registro:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al restaurar registro'
+        });
     }
 });
 
