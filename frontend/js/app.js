@@ -1707,6 +1707,16 @@ function obtenerDatosRegistroEliminado(tipo, registro) {
         };
     }
 
+        if (tipo === 'revisiones') {
+        return {
+            tipo: 'Revisión técnica',
+            id: registro.id_revision,
+            detalle: `${registro.codigo_camara || 'Sin cámara'} - ${registro.ubicacion_camara || 'Sin ubicación'}`,
+            extra: `Técnico: ${registro.tecnico_responsable || 'Sin técnico'} | Estado: ${registro.nombre_estado || 'Sin estado'}`,
+            fecha
+        };
+    }
+
     return {
         tipo: 'Registro',
         id: '',
@@ -1739,5 +1749,339 @@ async function restaurarRegistroEliminado(tipo, id) {
     } catch (error) {
         console.error('Error al restaurar registro:', error);
         alert('Error al restaurar registro');
+    }
+}
+
+/* ============================================================
+   CRUD REVISIONES TÉCNICAS
+============================================================ */
+
+let listaRevisionesTecnicas = [];
+
+async function iniciarGestionRevisionesTecnicas() {
+    await cargarEstadosRevisionGestion();
+    await cargarFiltroEstadosRevisionGestion();
+    await cargarRevisionesTecnicas();
+}
+
+async function cargarEstadosRevisionGestion(valorSeleccionado = '') {
+    try {
+        const respuesta = await fetch(`${API_URL}/estados-camara`);
+        const estados = await respuesta.json();
+
+        const select = document.getElementById('id_estado_revision_gestion');
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = '<option value="">Seleccione estado de cámara</option>';
+
+        estados.forEach(estado => {
+            const selected = String(estado.id_estado) === String(valorSeleccionado)
+                ? 'selected'
+                : '';
+
+            select.innerHTML += `
+                <option value="${estado.id_estado}" ${selected}>
+                    ${estado.nombre_estado}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar estados de cámara');
+    }
+}
+
+async function cargarFiltroEstadosRevisionGestion() {
+    try {
+        const respuesta = await fetch(`${API_URL}/estados-camara`);
+        const estados = await respuesta.json();
+
+        const select = document.getElementById('filtro_estado_revision');
+
+        if (!select) {
+            return;
+        }
+
+        select.innerHTML = '<option value="">Todos los estados de cámara</option>';
+
+        estados.forEach(estado => {
+            select.innerHTML += `
+                <option value="${estado.nombre_estado}">
+                    ${estado.nombre_estado}
+                </option>
+            `;
+        });
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+async function cargarRevisionesTecnicas() {
+    const tabla = document.getElementById('tabla-revisiones');
+
+    if (!tabla) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/revisiones`);
+
+        if (!respuesta.ok) {
+            alert('Error al obtener revisiones técnicas');
+            return;
+        }
+
+        listaRevisionesTecnicas = await respuesta.json();
+
+        aplicarFiltrosRevisionesTecnicas();
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al cargar revisiones técnicas');
+    }
+}
+
+function aplicarFiltrosRevisionesTecnicas() {
+    const tabla = document.getElementById('tabla-revisiones');
+
+    if (!tabla) {
+        return;
+    }
+
+    const filtroTexto = document.getElementById('filtro_texto_revision')?.value.toLowerCase() || '';
+    const filtroEstado = document.getElementById('filtro_estado_revision')?.value || '';
+    const fechaDesde = document.getElementById('filtro_revision_desde')?.value || '';
+    const fechaHasta = document.getElementById('filtro_revision_hasta')?.value || '';
+
+    let revisionesFiltradas = listaRevisionesTecnicas;
+
+    if (filtroTexto !== '') {
+        revisionesFiltradas = revisionesFiltradas.filter(revision =>
+            JSON.stringify(revision).toLowerCase().includes(filtroTexto)
+        );
+    }
+
+    if (filtroEstado !== '') {
+        revisionesFiltradas = revisionesFiltradas.filter(revision =>
+            revision.nombre_estado === filtroEstado
+        );
+    }
+
+    if (fechaDesde !== '') {
+        revisionesFiltradas = revisionesFiltradas.filter(revision => {
+            const fechaRevision = new Date(revision.fecha_revision);
+            const desde = new Date(fechaDesde + 'T00:00:00');
+
+            return fechaRevision >= desde;
+        });
+    }
+
+    if (fechaHasta !== '') {
+        revisionesFiltradas = revisionesFiltradas.filter(revision => {
+            const fechaRevision = new Date(revision.fecha_revision);
+            const hasta = new Date(fechaHasta + 'T23:59:59');
+
+            return fechaRevision <= hasta;
+        });
+    }
+
+    mostrarRevisionesTecnicas(revisionesFiltradas);
+}
+
+function limpiarFiltrosRevisionesTecnicas() {
+    const filtroTexto = document.getElementById('filtro_texto_revision');
+    const filtroEstado = document.getElementById('filtro_estado_revision');
+    const fechaDesde = document.getElementById('filtro_revision_desde');
+    const fechaHasta = document.getElementById('filtro_revision_hasta');
+
+    if (filtroTexto) {
+        filtroTexto.value = '';
+    }
+
+    if (filtroEstado) {
+        filtroEstado.value = '';
+    }
+
+    if (fechaDesde) {
+        fechaDesde.value = '';
+    }
+
+    if (fechaHasta) {
+        fechaHasta.value = '';
+    }
+
+    aplicarFiltrosRevisionesTecnicas();
+}
+
+function mostrarRevisionesTecnicas(revisiones) {
+    const tabla = document.getElementById('tabla-revisiones');
+
+    if (!tabla) {
+        return;
+    }
+
+    tabla.innerHTML = '';
+
+    if (!Array.isArray(revisiones) || revisiones.length === 0) {
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="9">No se encontraron revisiones técnicas.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    revisiones.forEach(revision => {
+        const fila = document.createElement('tr');
+
+        const incidencia = revision.id_incidencia
+            ? revision.id_incidencia
+            : 'Sin incidencia asociada';
+
+        const camara = revision.codigo_camara
+            ? `${revision.codigo_camara} - ${revision.ubicacion_camara || ''}`
+            : 'Sin cámara asociada';
+
+        fila.innerHTML = `
+            <td>${revision.id_revision}</td>
+            <td>${incidencia}</td>
+            <td>${revision.tecnico_responsable || 'Sin técnico'}</td>
+            <td>${revision.nombre_establecimiento || 'Sin establecimiento'}</td>
+            <td>${camara}</td>
+            <td>${revision.nombre_estado || 'Sin estado'}</td>
+            <td>${new Date(revision.fecha_revision).toLocaleString()}</td>
+            <td>${revision.observacion || 'Sin observación'}</td>
+            <td>
+                <button onclick="editarRevisionTecnica(${revision.id_revision})">
+                    Editar
+                </button>
+
+                <button onclick="anularRevisionTecnica(${revision.id_revision})">
+                    Anular
+                </button>
+            </td>
+        `;
+
+        tabla.appendChild(fila);
+    });
+}
+
+async function editarRevisionTecnica(id) {
+    try {
+        const respuesta = await fetch(`${API_URL}/revisiones/${id}`);
+
+        if (!respuesta.ok) {
+            alert('No se pudo obtener la revisión técnica');
+            return;
+        }
+
+        const revision = await respuesta.json();
+
+        document.getElementById('tituloFormularioRevisionGestion').innerText = 'Editar Revisión Técnica';
+        document.getElementById('id_revision_gestion').value = revision.id_revision;
+        document.getElementById('observacion_revision_gestion').value = revision.observacion || '';
+
+        const estadoAtencion = document.getElementById('estado_atencion_revision_gestion');
+
+        if (estadoAtencion) {
+            estadoAtencion.value = revision.estado_incidencia || '';
+        }
+
+        await cargarEstadosRevisionGestion(revision.id_estado);
+
+        window.scrollTo(0, 0);
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al editar revisión técnica');
+    }
+}
+
+function limpiarFormularioRevisionGestion() {
+    document.getElementById('id_revision_gestion').value = '';
+    document.getElementById('estado_atencion_revision_gestion').value = '';
+    document.getElementById('id_estado_revision_gestion').value = '';
+    document.getElementById('observacion_revision_gestion').value = '';
+    document.getElementById('tituloFormularioRevisionGestion').innerText = 'Editar Revisión Técnica';
+}
+
+async function guardarEdicionRevisionTecnica() {
+    const id = document.getElementById('id_revision_gestion').value;
+    const estado_atencion = document.getElementById('estado_atencion_revision_gestion').value;
+    const id_estado = document.getElementById('id_estado_revision_gestion').value;
+    const observacion = document.getElementById('observacion_revision_gestion').value;
+
+    if (id === '') {
+        alert('Seleccione una revisión para editar');
+        return;
+    }
+
+    if (
+        estado_atencion === '' ||
+        id_estado === '' ||
+        observacion.trim() === ''
+    ) {
+        alert('Complete todos los campos de la revisión');
+        return;
+    }
+
+    const datos = {
+        estado_atencion,
+        id_estado,
+        observacion: observacion.trim()
+    };
+
+    try {
+        const respuesta = await fetch(`${API_URL}/revisiones/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datos)
+        });
+
+        if (respuesta.ok) {
+            alert('Revisión técnica actualizada correctamente');
+            limpiarFormularioRevisionGestion();
+            cargarRevisionesTecnicas();
+        } else {
+            const error = await respuesta.json();
+            alert(error.mensaje || 'Error al actualizar revisión técnica');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al actualizar revisión técnica');
+    }
+}
+
+async function anularRevisionTecnica(id) {
+    const confirmar = confirm('¿Desea anular esta revisión técnica? La eliminación será lógica.');
+
+    if (!confirmar) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/revisiones/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (respuesta.ok) {
+            alert('Revisión técnica anulada lógicamente');
+            cargarRevisionesTecnicas();
+        } else {
+            const error = await respuesta.json();
+            alert(error.mensaje || 'Error al anular revisión técnica');
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert('Error al anular revisión técnica');
     }
 }

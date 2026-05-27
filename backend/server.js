@@ -1284,9 +1284,10 @@ app.post('/incidencias/:id/revision', async (req, res) => {
                 id_camara,
                 id_estado,
                 fecha_revision,
-                observacion
+                observacion,
+                activo
              )
-             VALUES ($1, $2, $3, $4, NOW(), $5)`,
+             VALUES ($1, $2, $3, $4, NOW(), $5, true)`,
             [
                 idRevision,
                 idUsuarioTecnico,
@@ -1347,6 +1348,269 @@ app.post('/incidencias/:id/revision', async (req, res) => {
 
         res.status(500).json({
             mensaje: 'Error al registrar revisión técnica'
+        });
+
+    } finally {
+        cliente.release();
+    }
+});
+
+/* ============================================================
+   CRUD REVISIONES TÉCNICAS
+============================================================ */
+
+app.get('/revisiones', async (req, res) => {
+    try {
+        const resultado = await pool.query(
+            `SELECT
+                rc.id_revision,
+                rc.id_usuario,
+                rc.id_camara,
+                rc.id_estado,
+                rc.fecha_revision,
+                rc.observacion,
+                rc.activo,
+                u.nombre AS tecnico_responsable,
+                c.codigo_camara,
+                c.ubicacion AS ubicacion_camara,
+                e.nombre_establecimiento,
+                ec.nombre_estado,
+                i.id AS id_incidencia,
+                i.estado AS estado_incidencia
+             FROM revision_camara rc
+             LEFT JOIN usuario u
+             ON rc.id_usuario = u.id_usuario
+             LEFT JOIN camara c
+             ON rc.id_camara = c.id_camara
+             LEFT JOIN establecimiento e
+             ON c.id_establecimiento = e.id_establecimiento
+             LEFT JOIN estado_camara ec
+             ON rc.id_estado = ec.id_estado
+             LEFT JOIN incidencias i
+             ON i.id_revision = rc.id_revision
+             WHERE rc.activo = true
+             ORDER BY rc.fecha_revision DESC, rc.id_revision DESC`
+        );
+
+        res.json(resultado.rows);
+
+    } catch (error) {
+        console.error('Error al obtener revisiones:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al obtener revisiones técnicas'
+        });
+    }
+});
+
+app.get('/revisiones/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const resultado = await pool.query(
+            `SELECT
+                rc.id_revision,
+                rc.id_usuario,
+                rc.id_camara,
+                rc.id_estado,
+                rc.fecha_revision,
+                rc.observacion,
+                rc.activo,
+                u.nombre AS tecnico_responsable,
+                c.codigo_camara,
+                c.ubicacion AS ubicacion_camara,
+                e.nombre_establecimiento,
+                ec.nombre_estado,
+                i.id AS id_incidencia,
+                i.estado AS estado_incidencia
+             FROM revision_camara rc
+             LEFT JOIN usuario u
+             ON rc.id_usuario = u.id_usuario
+             LEFT JOIN camara c
+             ON rc.id_camara = c.id_camara
+             LEFT JOIN establecimiento e
+             ON c.id_establecimiento = e.id_establecimiento
+             LEFT JOIN estado_camara ec
+             ON rc.id_estado = ec.id_estado
+             LEFT JOIN incidencias i
+             ON i.id_revision = rc.id_revision
+             WHERE rc.id_revision = $1
+             AND rc.activo = true`,
+            [id]
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(404).json({
+                mensaje: 'Revisión técnica no encontrada'
+            });
+        }
+
+        res.json(resultado.rows[0]);
+
+    } catch (error) {
+        console.error('Error al obtener revisión:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al obtener revisión técnica'
+        });
+    }
+});
+
+app.put('/revisiones/:id', async (req, res) => {
+    const cliente = await pool.connect();
+
+    try {
+        const { id } = req.params;
+
+        const {
+            id_estado,
+            observacion,
+            estado_atencion
+        } = req.body;
+
+        if (!id_estado || !observacion || !estado_atencion) {
+            return res.status(400).json({
+                mensaje: 'Faltan datos obligatorios para actualizar la revisión'
+            });
+        }
+
+        await cliente.query('BEGIN');
+
+        const revisionActual = await cliente.query(
+            `SELECT *
+             FROM revision_camara
+             WHERE id_revision = $1
+             AND activo = true`,
+            [id]
+        );
+
+        if (revisionActual.rows.length === 0) {
+            await cliente.query('ROLLBACK');
+
+            return res.status(404).json({
+                mensaje: 'Revisión técnica no encontrada'
+            });
+        }
+
+        const revision = revisionActual.rows[0];
+
+        await cliente.query(
+            `UPDATE revision_camara
+             SET
+                id_estado = $1,
+                observacion = $2
+             WHERE id_revision = $3
+             AND activo = true`,
+            [
+                id_estado,
+                observacion,
+                id
+            ]
+        );
+
+        await cliente.query(
+            `UPDATE incidencias
+             SET estado = $1
+             WHERE id_revision = $2
+             AND activo = true`,
+            [
+                estado_atencion,
+                id
+            ]
+        );
+
+        if (revision.id_camara) {
+            const estadoCamara = await cliente.query(
+                `SELECT nombre_estado
+                 FROM estado_camara
+                 WHERE id_estado = $1`,
+                [id_estado]
+            );
+
+            if (estadoCamara.rows.length > 0) {
+                await cliente.query(
+                    `UPDATE camara
+                     SET estado = $1
+                     WHERE id_camara = $2
+                     AND activo = true`,
+                    [
+                        estadoCamara.rows[0].nombre_estado,
+                        revision.id_camara
+                    ]
+                );
+            }
+        }
+
+        await cliente.query('COMMIT');
+
+        res.json({
+            mensaje: 'Revisión técnica actualizada correctamente'
+        });
+
+    } catch (error) {
+        await cliente.query('ROLLBACK');
+
+        console.error('Error al actualizar revisión:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al actualizar revisión técnica'
+        });
+
+    } finally {
+        cliente.release();
+    }
+});
+
+app.delete('/revisiones/:id', async (req, res) => {
+    const cliente = await pool.connect();
+
+    try {
+        const { id } = req.params;
+
+        await cliente.query('BEGIN');
+
+        const revision = await cliente.query(
+            `UPDATE revision_camara
+             SET
+                activo = false,
+                fecha_eliminacion = NOW()
+             WHERE id_revision = $1
+             AND activo = true
+             RETURNING *`,
+            [id]
+        );
+
+        if (revision.rows.length === 0) {
+            await cliente.query('ROLLBACK');
+
+            return res.status(404).json({
+                mensaje: 'Revisión técnica no encontrada o ya anulada'
+            });
+        }
+
+        await cliente.query(
+            `UPDATE incidencias
+             SET
+                id_revision = NULL,
+                estado = 'Pendiente'
+             WHERE id_revision = $1
+             AND activo = true`,
+            [id]
+        );
+
+        await cliente.query('COMMIT');
+
+        res.json({
+            mensaje: 'Revisión técnica anulada lógicamente'
+        });
+
+    } catch (error) {
+        await cliente.query('ROLLBACK');
+
+        console.error('Error al anular revisión:', error.message);
+
+        res.status(500).json({
+            mensaje: 'Error al anular revisión técnica'
         });
 
     } finally {
@@ -1435,6 +1699,38 @@ app.get('/admin/eliminados/:tipo', async (req, res) => {
                  FROM establecimiento
                  WHERE activo = false
                  ORDER BY fecha_eliminacion DESC NULLS LAST, id_establecimiento DESC`
+            );
+
+            return res.json(resultado.rows);
+        }
+
+        if (tipo === 'revisiones') {
+            resultado = await pool.query(
+                `SELECT
+                    rc.id_revision,
+                    rc.id_usuario,
+                    rc.id_camara,
+                    rc.id_estado,
+                    rc.fecha_revision,
+                    rc.observacion,
+                    rc.activo,
+                    rc.fecha_eliminacion,
+                    u.nombre AS tecnico_responsable,
+                    c.codigo_camara,
+                    c.ubicacion AS ubicacion_camara,
+                    e.nombre_establecimiento,
+                    ec.nombre_estado
+                 FROM revision_camara rc
+                 LEFT JOIN usuario u
+                 ON rc.id_usuario = u.id_usuario
+                 LEFT JOIN camara c
+                 ON rc.id_camara = c.id_camara
+                 LEFT JOIN establecimiento e
+                 ON c.id_establecimiento = e.id_establecimiento
+                 LEFT JOIN estado_camara ec
+                 ON rc.id_estado = ec.id_estado
+                 WHERE rc.activo = false
+                 ORDER BY rc.fecha_eliminacion DESC NULLS LAST, rc.id_revision DESC`
             );
 
             return res.json(resultado.rows);
@@ -1564,6 +1860,29 @@ app.put('/admin/restaurar/:tipo/:id', async (req, res) => {
 
             return res.json({
                 mensaje: 'Cámara restaurada correctamente'
+            });
+        }
+
+        if (tipo === 'revisiones') {
+            const resultado = await pool.query(
+                `UPDATE revision_camara
+                 SET
+                    activo = true,
+                    fecha_eliminacion = NULL
+                 WHERE id_revision = $1
+                 AND activo = false
+                 RETURNING id_revision`,
+                [id]
+            );
+
+            if (resultado.rows.length === 0) {
+                return res.status(404).json({
+                    mensaje: 'Revisión no encontrada o ya activa'
+                });
+            }
+
+            return res.json({
+                mensaje: 'Revisión técnica restaurada correctamente'
             });
         }
 

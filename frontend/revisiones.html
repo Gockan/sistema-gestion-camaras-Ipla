@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revisiones Técnicas</title>
+
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<div class="contenedor">
+
+    <h1>Gestión de Revisiones Técnicas</h1>
+
+    <p id="usuarioActivo"></p>
+
+    <h2 id="tituloFormularioRevisionGestion">Editar Revisión Técnica</h2>
+
+    <input type="hidden" id="id_revision_gestion">
+
+    <select id="estado_atencion_revision_gestion">
+        <option value="">Seleccione estado de atención</option>
+        <option value="En revisión">En revisión</option>
+        <option value="Resuelto">Resuelto</option>
+    </select>
+
+    <select id="id_estado_revision_gestion">
+        <option value="">Seleccione estado de cámara</option>
+    </select>
+
+    <textarea
+        id="observacion_revision_gestion"
+        placeholder="Observación técnica"
+        rows="5"
+    ></textarea>
+
+    <button onclick="guardarEdicionRevisionTecnica()">
+        Guardar cambios
+    </button>
+
+    <button onclick="limpiarFormularioRevisionGestion()">
+        Limpiar
+    </button>
+
+    <hr>
+
+    <h2>Filtros de Revisiones</h2>
+
+    <input
+        type="text"
+        id="filtro_texto_revision"
+        placeholder="Buscar por técnico, cámara, establecimiento u observación"
+        onkeyup="aplicarFiltrosRevisionesTecnicas()"
+    >
+
+    <select id="filtro_estado_revision" onchange="aplicarFiltrosRevisionesTecnicas()">
+        <option value="">Todos los estados de cámara</option>
+    </select>
+
+    <label>
+        Desde:
+        <input type="date" id="filtro_revision_desde" onchange="aplicarFiltrosRevisionesTecnicas()">
+    </label>
+
+    <label>
+        Hasta:
+        <input type="date" id="filtro_revision_hasta" onchange="aplicarFiltrosRevisionesTecnicas()">
+    </label>
+
+    <button onclick="limpiarFiltrosRevisionesTecnicas()">
+        Limpiar filtros
+    </button>
+
+    <hr>
+
+    <h2>Listado de Revisiones Técnicas Activas</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID Revisión</th>
+                <th>Incidencia</th>
+                <th>Técnico</th>
+                <th>Establecimiento</th>
+                <th>Cámara</th>
+                <th>Estado cámara</th>
+                <th>Fecha revisión</th>
+                <th>Observación</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+
+        <tbody id="tabla-revisiones">
+        </tbody>
+    </table>
+
+    <button onclick="window.location.href='dashboard.html'">
+        Volver al menú principal
+    </button>
+
+</div>
+
+<script>
+    const usuario = localStorage.getItem('usuario');
+    const rol = localStorage.getItem('rol');
+
+    if (!usuario || !rol) {
+        window.location.href = 'login.html';
+    }
+
+    if (rol !== 'Tecnico' && rol !== 'Administrador') {
+        alert('Acceso restringido');
+        window.location.href = 'dashboard.html';
+    }
+
+    document.getElementById('usuarioActivo').innerText =
+        'Usuario: ' + usuario + ' | Perfil: ' + rol;
+</script>
+
+<script src="js/app.js?v=20260527"></script>
+
+<script>
+    iniciarGestionRevisionesTecnicas();
+</script>
+
+</body>
+</html>
