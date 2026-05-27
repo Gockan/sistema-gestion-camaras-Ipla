@@ -1374,6 +1374,7 @@ async function eliminarUsuario(id) {
         alert('Error al eliminar usuario');
     }
 }
+
 /* ============================================================
    REVISIÓN TÉCNICA DE INCIDENCIAS
 ============================================================ */
@@ -1494,5 +1495,249 @@ async function guardarRevisionTecnica() {
     } catch (error) {
         console.error(error);
         alert('Error al registrar revisión técnica');
+    }
+}
+/* ============================================================
+   REGISTROS ELIMINADOS / PAPELERA ADMINISTRATIVA
+============================================================ */
+
+let listaRegistrosEliminados = [];
+
+async function iniciarRegistrosEliminados() {
+    await cargarRegistrosEliminados();
+}
+
+async function cargarRegistrosEliminados() {
+    const tabla = document.getElementById('tabla-eliminados');
+    const tipo = document.getElementById('tipo_eliminado')?.value || 'incidencias';
+
+    if (tabla) {
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="6">Cargando registros eliminados...</td>
+            </tr>
+        `;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/admin/eliminados/${tipo}`);
+
+        if (!respuesta.ok) {
+            if (tabla) {
+                tabla.innerHTML = `
+                    <tr>
+                        <td colspan="6">Error al obtener registros eliminados.</td>
+                    </tr>
+                `;
+            }
+
+            alert('Error al obtener registros eliminados');
+            return;
+        }
+
+        listaRegistrosEliminados = await respuesta.json();
+
+        aplicarFiltrosEliminados();
+
+    } catch (error) {
+        console.error('Error al cargar registros eliminados:', error);
+
+        if (tabla) {
+            tabla.innerHTML = `
+                <tr>
+                    <td colspan="6">Error al conectar con el servidor.</td>
+                </tr>
+            `;
+        }
+
+        alert('Error al cargar registros eliminados');
+    }
+}
+
+function aplicarFiltrosEliminados() {
+    const tabla = document.getElementById('tabla-eliminados');
+
+    if (!tabla) {
+        return;
+    }
+
+    const filtroTexto = document.getElementById('filtro_texto_eliminado')?.value.toLowerCase() || '';
+    const fechaDesde = document.getElementById('filtro_fecha_eliminado_desde')?.value || '';
+    const fechaHasta = document.getElementById('filtro_fecha_eliminado_hasta')?.value || '';
+
+    let registrosFiltrados = listaRegistrosEliminados;
+
+    if (filtroTexto !== '') {
+        registrosFiltrados = registrosFiltrados.filter(registro =>
+            JSON.stringify(registro).toLowerCase().includes(filtroTexto)
+        );
+    }
+
+    if (fechaDesde !== '') {
+        registrosFiltrados = registrosFiltrados.filter(registro => {
+            if (!registro.fecha_eliminacion) {
+                return false;
+            }
+
+            const fechaRegistro = new Date(registro.fecha_eliminacion);
+            const desde = new Date(fechaDesde + 'T00:00:00');
+
+            return fechaRegistro >= desde;
+        });
+    }
+
+    if (fechaHasta !== '') {
+        registrosFiltrados = registrosFiltrados.filter(registro => {
+            if (!registro.fecha_eliminacion) {
+                return false;
+            }
+
+            const fechaRegistro = new Date(registro.fecha_eliminacion);
+            const hasta = new Date(fechaHasta + 'T23:59:59');
+
+            return fechaRegistro <= hasta;
+        });
+    }
+
+    mostrarRegistrosEliminados(registrosFiltrados);
+}
+
+function limpiarFiltrosEliminados() {
+    const filtroTexto = document.getElementById('filtro_texto_eliminado');
+    const fechaDesde = document.getElementById('filtro_fecha_eliminado_desde');
+    const fechaHasta = document.getElementById('filtro_fecha_eliminado_hasta');
+
+    if (filtroTexto) {
+        filtroTexto.value = '';
+    }
+
+    if (fechaDesde) {
+        fechaDesde.value = '';
+    }
+
+    if (fechaHasta) {
+        fechaHasta.value = '';
+    }
+
+    aplicarFiltrosEliminados();
+}
+
+function mostrarRegistrosEliminados(registros) {
+    const tabla = document.getElementById('tabla-eliminados');
+    const tipo = document.getElementById('tipo_eliminado')?.value || 'incidencias';
+
+    if (!tabla) {
+        return;
+    }
+
+    tabla.innerHTML = '';
+
+    if (!Array.isArray(registros) || registros.length === 0) {
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="6">No se encontraron registros eliminados.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    registros.forEach(registro => {
+        const fila = document.createElement('tr');
+        const datos = obtenerDatosRegistroEliminado(tipo, registro);
+
+        fila.innerHTML = `
+            <td>${datos.tipo}</td>
+            <td>${datos.id}</td>
+            <td>${datos.detalle}</td>
+            <td>${datos.extra}</td>
+            <td>${datos.fecha}</td>
+            <td>
+                <button onclick="restaurarRegistroEliminado('${tipo}', ${datos.id})">
+                    Restaurar
+                </button>
+            </td>
+        `;
+
+        tabla.appendChild(fila);
+    });
+}
+
+function obtenerDatosRegistroEliminado(tipo, registro) {
+    const fecha = registro.fecha_eliminacion
+        ? new Date(registro.fecha_eliminacion).toLocaleString()
+        : 'Sin fecha registrada';
+
+    if (tipo === 'usuarios') {
+        return {
+            tipo: 'Usuario',
+            id: registro.id_usuario,
+            detalle: `${registro.nombre || 'Sin nombre'} - ${registro.correo || 'Sin correo'}`,
+            extra: `Perfil: ${registro.nombre_perfil || 'Sin perfil'}`,
+            fecha
+        };
+    }
+
+    if (tipo === 'incidencias') {
+        return {
+            tipo: 'Incidencia',
+            id: registro.id,
+            detalle: `${registro.sede || 'Sin sede'} - ${registro.ubicacion || 'Sin ubicación'}`,
+            extra: `Estado: ${registro.estado || 'Sin estado'}`,
+            fecha
+        };
+    }
+
+    if (tipo === 'camaras') {
+        return {
+            tipo: 'Cámara',
+            id: registro.id_camara,
+            detalle: `${registro.codigo_camara || 'Sin código'} - ${registro.ubicacion || 'Sin ubicación'}`,
+            extra: `Establecimiento: ${registro.nombre_establecimiento || 'Sin establecimiento'}`,
+            fecha
+        };
+    }
+
+    if (tipo === 'establecimientos') {
+        return {
+            tipo: 'Establecimiento',
+            id: registro.id_establecimiento,
+            detalle: registro.nombre_establecimiento || 'Sin nombre',
+            extra: registro.direccion || 'Sin dirección',
+            fecha
+        };
+    }
+
+    return {
+        tipo: 'Registro',
+        id: '',
+        detalle: '',
+        extra: '',
+        fecha
+    };
+}
+
+async function restaurarRegistroEliminado(tipo, id) {
+    const confirmar = confirm('¿Desea restaurar este registro? Volverá a quedar activo en el sistema.');
+
+    if (!confirmar) {
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_URL}/admin/restaurar/${tipo}/${id}`, {
+            method: 'PUT'
+        });
+
+        if (respuesta.ok) {
+            alert('Registro restaurado correctamente');
+            await cargarRegistrosEliminados();
+        } else {
+            const error = await respuesta.json();
+            alert(error.mensaje || 'Error al restaurar registro');
+        }
+
+    } catch (error) {
+        console.error('Error al restaurar registro:', error);
+        alert('Error al restaurar registro');
     }
 }

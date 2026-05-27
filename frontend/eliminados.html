@@ -60,6 +60,9 @@
         </thead>
 
         <tbody id="tabla-eliminados">
+            <tr>
+                <td colspan="6">Cargando registros eliminados...</td>
+            </tr>
         </tbody>
     </table>
 
@@ -86,10 +89,12 @@
         'Usuario: ' + usuario + ' | Perfil: ' + rol;
 </script>
 
-<script src="js/app.js"></script>
+<script src="js/app.js?v=20260527"></script>
 
 <script>
-    iniciarRegistrosEliminados();
+    window.addEventListener('load', function () {
+        iniciarRegistrosEliminados();
+    });
 </script>
 
 </body>
